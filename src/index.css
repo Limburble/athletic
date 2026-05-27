@@ -1,0 +1,330 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ── DESIGN TOKENS ── */
+:root {
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Surfaces */
+  --bg:          #08090f;
+  --surface-1:   rgba(255,255,255,0.05);
+  --surface-2:   rgba(255,255,255,0.09);
+  --border:      rgba(255,255,255,0.09);
+  --border-hi:   rgba(255,255,255,0.18);
+
+  /* Text */
+  --text-1:      rgba(255,255,255,0.92);
+  --text-2:      rgba(255,255,255,0.48);
+  --text-3:      rgba(255,255,255,0.24);
+
+  /* Accent — definition (leafy green) */
+  --accent:      #4a8c40;
+  --accent-hi:   #63b356;
+  --accent-dim:  rgba(74,140,64,0.18);
+  --accent-glow: rgba(74,140,64,0.28);
+
+  /* Timing */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[data-mode='strength'] {
+  --accent:      #b8720f;
+  --accent-hi:   #d98c24;
+  --accent-dim:  rgba(184,114,15,0.18);
+  --accent-glow: rgba(184,114,15,0.28);
+}
+
+:root[data-dark='false'] {
+  --bg:        #f0f2f7;
+  --surface-1: rgba(255,255,255,0.65);
+  --surface-2: rgba(255,255,255,0.85);
+  --border:    rgba(0,0,0,0.07);
+  --border-hi: rgba(0,0,0,0.14);
+  --text-1:    rgba(8,9,15,0.90);
+  --text-2:    rgba(8,9,15,0.46);
+  --text-3:    rgba(8,9,15,0.22);
+}
+
+/* ── RESET ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0; padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  transition: background 0.55s var(--ease);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+::-webkit-scrollbar { display: none; }
+
+/* ── GLASS SURFACE ── */
+.glass {
+  background: var(--surface-1);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--border);
+  transition: background 0.55s var(--ease), border-color 0.55s var(--ease);
+}
+
+.glass-hi {
+  background: var(--surface-2);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border: 1px solid var(--border-hi);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+}
+
+/* ── AMBIENT BACKGROUND ── */
+.ambient {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden;
+}
+.ambient-orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+
+/* ── TYPOGRAPHY SYSTEM ── */
+/* Only two scales — big and small. Nothing competing in between. */
+.t-display {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 0.92;
+  color: var(--text-1);
+}
+.t-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-weight: 500;
+  transition: color 0.4s var(--ease);
+}
+.t-body {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-1);
+  transition: color 0.4s var(--ease);
+}
+.t-caption {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-2);
+  transition: color 0.4s var(--ease);
+}
+
+/* ── ACCENT UTILITIES ── */
+.accent { color: var(--accent-hi); transition: color 0.5s var(--ease); }
+.accent-bg {
+  background: var(--accent);
+  box-shadow: 0 6px 24px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: background 0.5s var(--ease), box-shadow 0.5s var(--ease);
+}
+.accent-border { border-color: var(--accent) !important; }
+
+/* ── STEP CARD ── */
+/* The core of the guided setup experience */
+.step-card {
+  border-radius: 22px;
+  overflow: hidden;
+  transition:
+    opacity 0.4s var(--ease),
+    transform 0.45s var(--spring),
+    box-shadow 0.4s var(--ease),
+    filter 0.4s var(--ease);
+  will-change: transform, opacity;
+}
+.step-card.active {
+  opacity: 1;
+  transform: scale(1);
+  filter: none;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.22),
+              inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.step-card.done {
+  opacity: 0.68;
+  transform: scale(0.985);
+  filter: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.step-card.locked {
+  opacity: 0.32;
+  transform: scale(0.975);
+  filter: none;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* ── PICKER ── */
+.picker-wrap { position: relative; height: 180px; overflow: hidden; }
+.picker-scroll {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.picker-item { scroll-snap-align: center; user-select: none; }
+
+/* ── CHIP ── */
+.chip {
+  padding: 0.5rem 1.1rem;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.22s var(--spring);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  white-space: nowrap;
+}
+.chip.on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-hi);
+  box-shadow: 0 0 0 1px var(--accent-dim), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.chip:active { transform: scale(0.93); }
+
+/* ── EXERCISE ROW ── */
+.ex-row {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.ex-row:last-child { border-bottom: none; }
+.ex-row:active { background: rgba(255,255,255,0.04); }
+
+/* ── TOGGLE ── */
+.toggle-track {
+  position: relative;
+  display: flex;
+  border-radius: 100px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  padding: 3px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px; bottom: 3px;
+  border-radius: 100px;
+  background: var(--accent);
+  transition: transform 0.42s var(--spring), width 0.3s var(--ease), background 0.5s var(--ease);
+  box-shadow: 0 2px 8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  will-change: transform;
+}
+.toggle-label {
+  position: relative; z-index: 1;
+  flex: 1; text-align: center;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem; font-weight: 500;
+  transition: color 0.3s var(--ease);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── PRIMARY BUTTON ── */
+.btn-primary {
+  width: 100%;
+  padding: 1.05rem 1.5rem;
+  border-radius: 18px;
+  border: none;
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem; letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.35s var(--spring);
+  -webkit-font-smoothing: antialiased;
+}
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled {
+  background: var(--surface-1) !important;
+  box-shadow: none !important;
+  color: var(--text-3) !important;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── FULLSCREEN TIMER ── */
+.timer-fs {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: background 0.65s var(--ease), opacity 0.5s var(--ease);
+}
+.timer-fs.work-def  { background: #061408; }
+.timer-fs.rest-def  { background: #0a0c14; }
+.timer-fs.work-str  { background: #140800; }
+.timer-fs.rest-str  { background: #0c0a04; }
+.timer-fs.done      { background: #0a0a0a; }
+
+/* Progress strip — top of fullscreen timer */
+.timer-strip {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: rgba(255,255,255,0.08);
+}
+.timer-strip-fill {
+  height: 100%;
+  background: var(--accent-hi);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.9s linear, background 0.5s var(--ease);
+}
+
+/* ── SPRING ANIMATIONS ── */
+@keyframes orbFloat1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(7%, 10%) scale(1.12); }
+}
+@keyframes orbFloat2 {
+  0%   { transform: translate(0, 0) scale(1.08); }
+  100% { transform: translate(-9%, -7%) scale(1); }
+}
+@keyframes orbFloat3 {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(5%, -8%); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseScale {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(0.95); }
+}
+
+/* ── NAV INDICATOR ── */
+.nav-indicator {
+  position: absolute;
+  bottom: 4px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent-hi);
+  box-shadow: 0 0 6px var(--accent-glow);
+  transition: background 0.5s var(--ease), box-shadow 0.5s var(--ease);
+}
+
+/* ── SECTION DIVIDER ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  transition: background 0.4s var(--ease);
+}
