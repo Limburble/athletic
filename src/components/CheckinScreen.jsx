@@ -1,6 +1,16 @@
 import React, { useState } from 'react'
 import { SaIcon, SaFloatingDock } from './SanctuaryAtoms'
 
+const DAY_WORDS = [
+  'zero', 'one', 'two', 'three', 'four', 'five',
+  'six', 'seven', 'eight', 'nine', 'ten',
+]
+
+function daysText(n) {
+  const word = n <= 10 ? DAY_WORDS[n] : String(n)
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
+
 function CheckSection({ n, label, children, delay = 0 }) {
   return (
     <div className="sa-enter" style={{ marginBottom: 18, animationDelay: `${delay}s` }}>
@@ -18,19 +28,27 @@ function CheckSection({ n, label, children, delay = 0 }) {
 }
 
 export default function CheckinScreen({ state }) {
-  const { mode, setTab } = state
+  const { mode, setTab, store } = state
+  const { profile, thisWeekCheckin, stats } = store
 
-  const [weight,     setWeight]   = useState(149)
+  // Initialise from previous check-in this week, or from stored profile
+  const [weight,     setWeight]   = useState(thisWeekCheckin?.weight   ?? profile.weight)
   const [heightOpen, setHO]       = useState(false)
-  const [heightFt,   setHF]       = useState(5)
-  const [heightIn,   setHI]       = useState(10)
-  const [arrived,    setArrived]  = useState(null)
-  const [aches,      setAches]    = useState([])
-  const [sleep,      setSleep]    = useState(2)
-  const [intention,  setInt]      = useState('')
+  const [heightFt,   setHF]       = useState(profile.heightFt)
+  const [heightIn,   setHI]       = useState(profile.heightIn)
+  const [arrived,    setArrived]  = useState(thisWeekCheckin?.arrived   ?? null)
+  const [aches,      setAches]    = useState(thisWeekCheckin?.aches     ?? [])
+  const [sleep,      setSleep]    = useState(thisWeekCheckin?.sleep     ?? 2)
+  const [intention,  setInt]      = useState(thisWeekCheckin?.intention ?? '')
 
   const now  = new Date()
   const week = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+
+  // Dynamic heading based on days in the programme
+  const daysIn = stats.daysIn
+  const bigText  = daysIn === 0 ? 'Welcome,' : `${daysText(daysIn)}`
+  const emText   = daysIn === 0 ? 'begin.' : daysIn === 1 ? 'day' : 'days'
+  const smallText = daysIn === 0 ? null : 'in.'
 
   const arrivedOpts = [
     { id: 'rested',  label: 'Rested'  },
@@ -56,7 +74,14 @@ export default function CheckinScreen({ state }) {
     setAches(a => a.includes(id) ? a.filter(x => x !== id) : [...a.filter(x => x !== 'clear'), id])
   }
 
-  function handleDone() { setTab('path') }
+  function handleSave() {
+    store.saveCheckin({ weight, heightFt, heightIn, arrived, aches, sleep, intention })
+    setTab('path')
+  }
+
+  function handleSkip() {
+    setTab('path')
+  }
 
   return (
     <div className="sa-app" data-sa-mode={mode}
@@ -66,7 +91,7 @@ export default function CheckinScreen({ state }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
         <span className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>WEEK OF {week.toUpperCase()}</span>
-        <span className="sa-tap" onClick={handleDone}>
+        <span className="sa-tap" onClick={handleSkip}>
           <SaIcon name="close" size={18} color="var(--sa-ink-3)" />
         </span>
       </div>
@@ -77,9 +102,11 @@ export default function CheckinScreen({ state }) {
         <div className="sa-enter" style={{ marginBottom: 28 }}>
           <div className="sa-label" style={{ marginBottom: 14 }}>A SMALL CHECK-IN</div>
           <div className="sa-serif" style={{ fontSize: 36, lineHeight: 1.05, marginBottom: 4 }}>
-            Seven <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>days</em>
+            {bigText} <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>{emText}</em>
           </div>
-          <div className="sa-serif" style={{ fontSize: 36, lineHeight: 1.05, color: 'var(--sa-ink-2)' }}>in.</div>
+          {smallText && (
+            <div className="sa-serif" style={{ fontSize: 36, lineHeight: 1.05, color: 'var(--sa-ink-2)' }}>{smallText}</div>
+          )}
           <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.55, marginTop: 14, maxWidth: 300 }}>
             Two minutes. We'll know you a little better.
             Skip anything you don't feel like.
@@ -95,7 +122,9 @@ export default function CheckinScreen({ state }) {
               <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 32, lineHeight: 1 }}>
                 {weight}<span style={{ fontStyle: 'italic', color: 'var(--sa-ink-2)', fontSize: 18, marginLeft: 4 }}>lb</span>
               </div>
-              <div className="sa-serif-it" style={{ fontSize: 11, color: 'var(--sa-ink-3)', marginTop: 4 }}>same as last week</div>
+              <div className="sa-serif-it" style={{ fontSize: 11, color: 'var(--sa-ink-3)', marginTop: 4 }}>
+                {profile.weight === weight ? 'same as last check-in' : `was ${profile.weight} lb`}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[['minus', -1], ['plus', 1]].map(([ico, delta]) => (
@@ -126,7 +155,7 @@ export default function CheckinScreen({ state }) {
           {heightOpen && (
             <div className="sa-enter" style={{ padding: '0 22px 18px', display: 'flex', gap: 14 }}>
               {[
-                { label: 'FEET', val: heightFt, set: setHF, min: 4, max: 7 },
+                { label: 'FEET',   val: heightFt, set: setHF, min: 4, max: 7  },
                 { label: 'INCHES', val: heightIn, set: setHI, min: 0, max: 11 },
               ].map(({ label, val, set, min, max }) => (
                 <div key={label} style={{ flex: 1 }}>
@@ -244,12 +273,12 @@ export default function CheckinScreen({ state }) {
       </div>
 
       <SaFloatingDock>
-        <button className="sa-cta" onClick={handleDone}>
+        <button className="sa-cta" onClick={handleSave}>
           Saved · step in
           <span className="arrow"><SaIcon name="arrowSm" size={16} color="#14110e" /></span>
         </button>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          <span className="sa-tap" onClick={handleDone} style={{
+          <span className="sa-tap" onClick={handleSkip} style={{
             fontFamily: 'Newsreader, serif', fontStyle: 'italic',
             fontSize: 13, color: 'var(--sa-ink-3)',
           }}>

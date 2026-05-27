@@ -69,7 +69,7 @@ export default function ComposeScreen({ state }) {
   const groupLabels = groups.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' & ')
 
   function handleStart() {
-    setTab('deep')
+    state.goDeep()
   }
 
   return (

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { SaIcon, SaStat, SaSwitch } from './SanctuaryAtoms'
 
 function RoomSection({ title, children, delay = 0 }) {
@@ -34,11 +34,19 @@ function RoomRow({ label, sub, children, chev, last }) {
 }
 
 export default function RoomScreen({ state }) {
-  const { mode, setMode, light, setLight, setTab } = state
-  const [haptics,   setHaptics]   = React.useState(true)
-  const [ambient,   setAmbient]   = React.useState(true)
-  const [hydration, setHydration] = React.useState(true)
-  const [keepOn,    setKeepOn]    = React.useState(true)
+  const { mode, setMode, light, setLight, setTab, store } = state
+  const { profile, stats } = store
+
+  // Local toggle state — initialised from stored prefs, persisted on change
+  const [haptics,   setHapticsState]   = useState(store.prefs.haptics)
+  const [ambient,   setAmbientState]   = useState(store.prefs.ambient)
+  const [hydration, setHydrationState] = useState(store.prefs.hydration)
+  const [keepOn,    setKeepOnState]    = useState(store.prefs.keepOn)
+
+  const setHaptics   = (v) => { setHapticsState(v);   store.updatePrefs({ haptics:   v }) }
+  const setAmbient   = (v) => { setAmbientState(v);   store.updatePrefs({ ambient:   v }) }
+  const setHydration = (v) => { setHydrationState(v); store.updatePrefs({ hydration: v }) }
+  const setKeepOn    = (v) => { setKeepOnState(v);    store.updatePrefs({ keepOn:    v }) }
 
   return (
     <div className="sa-app" data-sa-mode={mode} data-sa-light={light}
@@ -69,17 +77,17 @@ export default function RoomScreen({ state }) {
         <div className="sa-panel sa-enter" style={{ padding: '22px 24px', marginBottom: 24, animationDelay: '0.1s' }}>
           <div className="sa-label" style={{ fontSize: 9, marginBottom: 10 }}>WHOSE ROOM</div>
           <div className="sa-serif" style={{ fontSize: 26, marginBottom: 4 }}>
-            Brayden <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>L.</em>
+            {profile.name} <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>{profile.lastName}.</em>
           </div>
           <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginBottom: 16 }}>
-            5'10" · 149 lb · Club Greenwood
+            {profile.heightFt}'{profile.heightIn}" · {profile.weight} lb · {profile.gym}
           </div>
           <div style={{ display: 'flex', gap: 0, paddingTop: 16, borderTop: '1px solid var(--sa-rule)' }}>
-            <SaStat k="VISITS"  v="142" light />
+            <SaStat k="VISITS"  v={stats.visits  > 0 ? String(stats.visits)  : '0'} light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="DAYS IN" v="294" light />
+            <SaStat k="DAYS IN" v={stats.daysIn  > 0 ? String(stats.daysIn)  : '0'} light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="STREAK"  v="5"   light />
+            <SaStat k="STREAK"  v={stats.streak  > 0 ? String(stats.streak)  : '0'} light />
           </div>
         </div>
 
@@ -151,7 +159,7 @@ export default function RoomScreen({ state }) {
 
         {/* Gym */}
         <RoomSection title="What's in your gym" delay={0.25}>
-          <RoomRow label="Club Greenwood" sub="Dumbbells, cables, smith, benches. Set up." chev last />
+          <RoomRow label={profile.gym} sub="Dumbbells, cables, smith, benches. Set up." chev last />
         </RoomSection>
 
         <RoomSection title="Boundaries" delay={0.3}>

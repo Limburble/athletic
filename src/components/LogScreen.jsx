@@ -1,17 +1,32 @@
 import React from 'react'
 import { SaTopBar, SaDock, SaIcon, SaStat } from './SanctuaryAtoms'
+import { dayKey, weekMonday } from '../data/store'
 
-const SA_LOG = [
-  { d: '27', dow: 'Wed', month: 'May', mode: 'def', label: 'Chest & back',     mood: 'Steady', dur: 62, today: true,  note: 'Felt the back open up by set three.' },
-  { d: '25', dow: 'Mon', month: 'May', mode: 'def', label: 'Shoulders & arms', mood: 'Light',  dur: 48, note: 'Quick reset. Sauna after.' },
-  { d: '23', dow: 'Sat', month: 'May', mode: 'str', label: 'Legs',             mood: 'Heavy',  dur: 78, note: 'Long one. Slept like the dead.' },
-  { d: '21', dow: 'Thu', month: 'May', mode: 'def', label: 'Chest & back',     mood: 'Clear',  dur: 60 },
-  { d: '19', dow: 'Tue', month: 'May', mode: 'str', label: 'Legs',             mood: 'Steady', dur: 75 },
-  { d: '17', dow: 'Sun', month: 'May', mode: 'def', label: 'Full body',        mood: 'Light',  dur: 45 },
-]
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
+}
 
 export default function LogScreen({ state }) {
-  const { mode, setTab } = state
+  const { mode, setTab, store } = state
+  const { sessions, stats } = store
+
+  // ── Six-week dot grid ────────────────────────────────────────────────────
+  const gridStart = weekMonday()
+  gridStart.setDate(gridStart.getDate() - 35)  // go back 5 more weeks
+
+  // Build a map: day-key → mode (last session wins if multiple in a day)
+  const sessionDayMap = {}
+  sessions.forEach(s => {
+    const k = dayKey(new Date(s.timestamp))
+    sessionDayMap[k] = s.mode
+  })
+
+  const todayKey = dayKey()
+
+  // Sessions in the last 6 weeks for the frequency label
+  const sixWeekStart  = gridStart.getTime()
+  const sixWeekCount  = sessions.filter(s => s.timestamp >= sixWeekStart).length
+  const perWeekAvg    = (sixWeekCount / 6).toFixed(1).replace(/\.0$/, '')
 
   return (
     <div className="sa-app" data-sa-mode={mode}
@@ -36,11 +51,11 @@ export default function LogScreen({ state }) {
         <div className="sa-panel sa-enter" style={{ padding: '24px 18px', marginBottom: 24, animationDelay: '0.1s' }}>
           <div className="sa-label" style={{ fontSize: 9, textAlign: 'center', marginBottom: 16 }}>THE PAST FOUR WEEKS</div>
           <div style={{ display: 'flex', gap: 0 }}>
-            <SaStat k="VISITS" v="14"     light />
+            <SaStat k="VISITS" v={String(stats.recentVisits)}                                                   light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="HOURS"  v="12.5"   light />
+            <SaStat k="HOURS"  v={stats.recentHours > 0 ? String(stats.recentHours) : '0'}                     light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="AVG MOOD" v="Steady" light />
+            <SaStat k="AVG MOOD" v={stats.recentAvgMood ? capitalize(stats.recentAvgMood) : '—'}               light />
           </div>
         </div>
 
@@ -48,7 +63,9 @@ export default function LogScreen({ state }) {
         <div className="sa-enter" style={{ marginBottom: 36, animationDelay: '0.15s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
             <span className="sa-label">SIX-WEEK PATTERN</span>
-            <span className="sa-label" style={{ color: 'var(--sa-ink-3)' }}>3 / WEEK · STEADY</span>
+            <span className="sa-label" style={{ color: 'var(--sa-ink-3)' }}>
+              {sixWeekCount > 0 ? `${perWeekAvg} / WEEK` : 'NO SESSIONS YET'}
+            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
             {/* Day headers */}
@@ -57,22 +74,31 @@ export default function LogScreen({ state }) {
             ))}
             {/* 42 day cells */}
             {Array.from({ length: 42 }).map((_, i) => {
-              const seed    = (i * 17 + 5) % 11
-              const has     = seed < 6
-              const isStr   = has && seed % 3 === 0
-              const isToday = i === 39
-              const accent  = isStr ? 'var(--sa-str)' : 'var(--sa-def)'
-              const aura    = isStr ? 'var(--sa-str-glow)' : 'var(--sa-def-glow)'
+              const cellDate = new Date(gridStart)
+              cellDate.setDate(cellDate.getDate() + i)
+              cellDate.setHours(0, 0, 0, 0)
+              const cellKey  = cellDate.getTime()
+              const cellMode = sessionDayMap[cellKey]
+              const has      = !!cellMode
+              const isToday  = cellKey === todayKey
+              const isFuture = cellKey > todayKey
+              const accent   = cellMode === 'str' ? 'var(--sa-str)' : 'var(--sa-def)'
+              const aura     = cellMode === 'str' ? 'var(--sa-str-glow)' : 'var(--sa-def-glow)'
               return (
                 <div key={i} style={{
                   aspectRatio: '1', borderRadius: 100,
                   background: has && isToday ? accent : 'transparent',
                   border: `1px solid ${has ? accent : 'var(--sa-rule)'}`,
-                  boxShadow: isToday ? `0 0 14px ${aura}` : 'none',
+                  boxShadow: isToday && has ? `0 0 14px ${aura}` : 'none',
+                  opacity: isFuture ? 0.25 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.3s ease',
                 }}>
                   {has && !isToday && (
                     <div style={{ width: 4, height: 4, borderRadius: 100, background: accent, opacity: 0.7 }} />
+                  )}
+                  {isToday && !has && (
+                    <div style={{ width: 4, height: 4, borderRadius: 100, background: 'var(--sa-ink-3)', opacity: 0.5 }} />
                   )}
                 </div>
               )
@@ -83,59 +109,85 @@ export default function LogScreen({ state }) {
         {/* Recent visits */}
         <div className="sa-enter" style={{ animationDelay: '0.2s' }}>
           <div className="sa-label" style={{ marginBottom: 14 }}>RECENT VISITS</div>
-          {SA_LOG.map((e, i) => (
-            <div key={i} className="sa-tap" style={{
-              display: 'flex', gap: 16, padding: '16px 0',
-              borderBottom: i < SA_LOG.length - 1 ? '1px solid var(--sa-rule)' : 'none',
-              alignItems: 'flex-start',
+
+          {sessions.length === 0 ? (
+            <div style={{
+              padding: '48px 0', textAlign: 'center',
+              border: '1px solid var(--sa-rule)', borderRadius: 22,
             }}>
-              {/* Date column */}
-              <div style={{ textAlign: 'center', width: 52, flexShrink: 0 }}>
-                <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginBottom: 2 }}>{e.dow.toUpperCase()}</div>
-                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 32, lineHeight: 1, color: e.today ? 'var(--sa-accent)' : 'var(--sa-ink-1)' }}>
-                  {e.d}
-                </div>
-                <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginTop: 2 }}>{e.month.toUpperCase()}</div>
+              <div className="sa-serif-it" style={{ fontSize: 18, color: 'var(--sa-ink-3)', marginBottom: 10 }}>
+                Nothing here yet.
               </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: 100, background: e.mode === 'def' ? 'var(--sa-def)' : 'var(--sa-str)', flexShrink: 0 }} />
-                  <span className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-2)' }}>
-                    {e.mode === 'def' ? 'DEFINITION' : 'STRENGTH'}
-                  </span>
-                  {e.today && <span className="sa-serif-it" style={{ fontSize: 11, color: 'var(--sa-accent)' }}>· tonight</span>}
-                </div>
-                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 4, letterSpacing: '-0.005em' }}>
-                  {e.label}
-                </div>
-                {e.note && (
-                  <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.4 }}>
-                    "{e.note}"
-                  </div>
-                )}
-              </div>
-
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 16, color: 'var(--sa-ink-1)' }}>
-                  {e.dur}<span style={{ color: 'var(--sa-ink-3)', fontSize: 12 }}>m</span>
-                </div>
-                <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginTop: 2 }}>{e.mood.toUpperCase()}</div>
+              <div style={{ fontSize: 13, color: 'var(--sa-ink-4)', lineHeight: 1.5 }}>
+                Complete a session and it'll appear.
               </div>
             </div>
-          ))}
+          ) : (
+            sessions.slice(0, 12).map((e, i, arr) => {
+              const d       = new Date(e.timestamp)
+              const dayNum  = d.getDate()
+              const dow     = d.toLocaleDateString('en-US', { weekday: 'short' })
+              const month   = d.toLocaleDateString('en-US', { month: 'short' })
+              const isToday = dayKey(d) === todayKey
+              return (
+                <div key={e.id || i} className="sa-tap" style={{
+                  display: 'flex', gap: 16, padding: '16px 0',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--sa-rule)' : 'none',
+                  alignItems: 'flex-start',
+                }}>
+                  {/* Date column */}
+                  <div style={{ textAlign: 'center', width: 52, flexShrink: 0 }}>
+                    <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginBottom: 2 }}>{dow.toUpperCase()}</div>
+                    <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 32, lineHeight: 1, color: isToday ? 'var(--sa-accent)' : 'var(--sa-ink-1)' }}>
+                      {dayNum}
+                    </div>
+                    <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginTop: 2 }}>{month.toUpperCase()}</div>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 100, background: e.mode === 'def' ? 'var(--sa-def)' : 'var(--sa-str)', flexShrink: 0 }} />
+                      <span className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-2)' }}>
+                        {e.mode === 'def' ? 'DEFINITION' : 'STRENGTH'}
+                      </span>
+                      {isToday && <span className="sa-serif-it" style={{ fontSize: 11, color: 'var(--sa-accent)' }}>· tonight</span>}
+                    </div>
+                    <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 4, letterSpacing: '-0.005em' }}>
+                      {e.label || (e.groups?.length > 0 ? e.groups.map(g => capitalize(g)).join(' & ') : 'Full body')}
+                    </div>
+                    {e.note && (
+                      <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.4 }}>
+                        "{e.note}"
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 16, color: 'var(--sa-ink-1)' }}>
+                      {e.duration || '—'}<span style={{ color: 'var(--sa-ink-3)', fontSize: 12 }}>{e.duration ? 'm' : ''}</span>
+                    </div>
+                    {e.mood && (
+                      <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', marginTop: 2 }}>{e.mood.toUpperCase()}</div>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
 
-        {/* Archive link */}
-        <div className="sa-enter sa-tap" style={{
-          marginTop: 22, padding: '16px 24px', borderRadius: 100,
-          border: '1px solid var(--sa-rule-hi)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          animationDelay: '0.3s',
-        }}>
-          <span className="sa-serif-it" style={{ fontSize: 14, color: 'var(--sa-ink-2)' }}>The full archive</span>
-          <SaIcon name="arrowSm" size={14} color="var(--sa-ink-2)" />
-        </div>
+        {/* Archive link — only show if there's more than 12 sessions */}
+        {sessions.length > 12 && (
+          <div className="sa-enter sa-tap" style={{
+            marginTop: 22, padding: '16px 24px', borderRadius: 100,
+            border: '1px solid var(--sa-rule-hi)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            animationDelay: '0.3s',
+          }}>
+            <span className="sa-serif-it" style={{ fontSize: 14, color: 'var(--sa-ink-2)' }}>The full archive</span>
+            <SaIcon name="arrowSm" size={14} color="var(--sa-ink-2)" />
+          </div>
+        )}
 
         <div style={{ height: 24 }} />
       </div>

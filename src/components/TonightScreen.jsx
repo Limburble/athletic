@@ -2,19 +2,25 @@ import React from 'react'
 import { SaTopBar, SaDock, SaIcon, SaStat } from './SanctuaryAtoms'
 
 export default function TonightScreen({ state }) {
-  const { mode, setTab } = state
+  const { mode, setTab, store } = state
 
   const now = new Date()
   const hour = now.getHours()
   const tod = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
   const ritual = {
-    morning:   { greeting: 'Good morning.', verb: 'wake',       body: 'The room is bright.' },
-    afternoon: { greeting: 'Good afternoon.', verb: 'reset',    body: 'A moment to step out.' },
-    evening:   { greeting: 'Good evening.', verb: 'decompress', body: 'The day is long enough.' },
-    night:     { greeting: 'Good night.', verb: 'unwind',       body: 'The room is warm.' },
+    morning:   { greeting: 'Good morning.',   verb: 'wake',       body: 'The room is bright.' },
+    afternoon: { greeting: 'Good afternoon.', verb: 'reset',      body: 'A moment to step out.' },
+    evening:   { greeting: 'Good evening.',   verb: 'decompress', body: 'The day is long enough.' },
+    night:     { greeting: 'Good night.',     verb: 'unwind',     body: 'The room is warm.' },
   }[tod]
 
-  const lastDays = 2
+  const { lastVisitDaysAgo } = store.stats
+
+  const lastVisitText = lastVisitDaysAgo === null
+    ? 'No visits yet. Make tonight the first.'
+    : lastVisitDaysAgo === 0
+    ? "You've already been in today."
+    : `Last visit · ${lastVisitDaysAgo} ${lastVisitDaysAgo === 1 ? 'day' : 'days'} ago`
 
   const goPath = () => setTab('path')
 
@@ -116,7 +122,7 @@ export default function TonightScreen({ state }) {
         {/* Footer */}
         <div style={{ padding: '32px 28px 16px', textAlign: 'center', opacity: 0.65 }} className="sa-enter">
           <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)' }}>
-            Last visit · {lastDays} days ago
+            {lastVisitText}
           </div>
         </div>
 

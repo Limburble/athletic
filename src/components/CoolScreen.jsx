@@ -1,12 +1,44 @@
 import React, { useState } from 'react'
 import { SaIcon, SaStat, SaSwitch, SaFloatingDock } from './SanctuaryAtoms'
+import { dayKey, weekMonday } from '../data/store'
+
+const SLOT_VALUES = [15, 30, 45, 60, 75, 90, 105, 120]
 
 export default function CoolScreen({ state }) {
-  const { coolStep, setCoolStep, reset, setTab } = state
+  const { coolStep, setCoolStep, reset, groups, mode, slotIdx, workout, sessionStart, store } = state
 
-  if (coolStep === 'arrive')  return <CoolArrive  onNext={() => setCoolStep('reflect')} />
-  if (coolStep === 'reflect') return <CoolReflect onNext={() => setCoolStep('close')} />
-  return <CoolClose onDone={() => { reset(); setTab('tonight') }} />
+  function handleClose(data) {
+    // Compute duration from the wall clock
+    const duration = sessionStart
+      ? Math.round((Date.now() - sessionStart) / 60000)
+      : (slotIdx !== undefined ? (SLOT_VALUES[slotIdx] || 60) : 60)
+
+    const label = groups.length > 0
+      ? groups.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' & ')
+      : 'Full body'
+
+    store.saveSession({ groups, mode, slotIdx, label, duration, mood: data.mood, note: data.note })
+    reset()
+  }
+
+  if (coolStep === 'arrive') return (
+    <CoolArrive onNext={() => setCoolStep('reflect')} />
+  )
+  if (coolStep === 'reflect') return (
+    <CoolReflect
+      onNext={() => setCoolStep('close')}
+      mode={mode}
+      slotIdx={slotIdx}
+      workout={workout}
+      sessionStart={sessionStart}
+    />
+  )
+  return (
+    <CoolClose
+      onDone={handleClose}
+      sessions={store.sessions}
+    />
+  )
 }
 
 /* ── Arrive ── The first breath after the bell. */
@@ -93,9 +125,23 @@ function CoolArrive({ onNext }) {
   )
 }
 
-/* ── Reflect ── Restoration moment. Hydration, stats, options. */
-function CoolReflect({ onNext }) {
+/* ── Reflect ── Restoration moment. Real session stats. */
+function CoolReflect({ onNext, mode, slotIdx, workout, sessionStart }) {
   const [hydrated, setHydrated] = useState(false)
+
+  // Actual elapsed time, falling back to planned duration
+  const duration = sessionStart
+    ? Math.round((Date.now() - sessionStart) / 60000)
+    : (slotIdx !== undefined ? (SLOT_VALUES[slotIdx] || 60) : 60)
+
+  // Total sets from main block
+  const totalSets = workout ? workout.main.reduce((acc, ex) => {
+    const spec = mode === 'str' ? ex.s : ex.d
+    const m = spec && spec.match(/^(\d+)/)
+    return acc + (m ? parseInt(m[1]) : 3)
+  }, 0) : 0
+
+  const effortLabel = mode === 'str' ? 'heavy' : 'steady'
 
   return (
     <div className="sa-app" data-sa-mode="cool"
@@ -141,11 +187,11 @@ function CoolReflect({ onNext }) {
         <div className="sa-panel sa-enter" style={{ padding: '22px 22px 20px', marginBottom: 14, animationDelay: '0.1s' }}>
           <div className="sa-label" style={{ fontSize: 9, marginBottom: 16 }}>WHAT YOU GAVE</div>
           <div style={{ display: 'flex', gap: 0 }}>
-            <SaStat k="TIME"   v="62" sub="MINUTES" light />
+            <SaStat k="TIME"   v={String(duration)} sub="MIN" light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="SETS"   v="24" light />
+            <SaStat k="SETS"   v={totalSets > 0 ? String(totalSets) : '—'} light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="EFFORT" v="steady" light />
+            <SaStat k="EFFORT" v={effortLabel} light />
           </div>
           <div className="sa-rule" style={{ margin: '20px -22px 18px' }} />
           <div style={{ fontSize: 12, color: 'var(--sa-ink-2)', lineHeight: 1.55 }}>
@@ -203,8 +249,8 @@ function CoolReflect({ onNext }) {
   )
 }
 
-/* ── Close ── The journal. Mood + note + week dots. */
-function CoolClose({ onDone }) {
+/* ── Close ── The journal. Mood + note + real week dots. */
+function CoolClose({ onDone, sessions }) {
   const [mood, setMood] = useState(null)
   const [note, setNote] = useState('')
 
@@ -215,11 +261,27 @@ function CoolClose({ onDone }) {
     { id: 'clear',  label: 'Clear'  },
   ]
 
-  const now = new Date()
-  const dayOfWeek = now.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
-  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-  // Map Sun=0 to index 6, Mon=1 to 0, etc.
-  const todayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  // Build week dot data from real sessions
+  const monday    = weekMonday()
+  const todayKey  = dayKey()
+  const weekDays  = new Set(
+    sessions
+      .filter(s => s.timestamp >= monday.getTime())
+      .map(s => dayKey(new Date(s.timestamp)))
+  )
+  weekDays.add(todayKey)   // today's session (being logged right now)
+
+  const dayLabels  = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const todayDow   = (new Date().getDay() || 7) - 1   // 0 = Mon, 6 = Sun
+  const weekVisits = weekDays.size
+
+  // For each Mon-Sun cell, compute the actual calendar date
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(d.getDate() + i)
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  })
 
   return (
     <div className="sa-app" data-sa-mode="cool"
@@ -285,17 +347,20 @@ function CoolClose({ onDone }) {
           <div className="sa-label" style={{ fontSize: 9, marginBottom: 10 }}>VISITS THIS WEEK</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
             {dayLabels.map((d, i) => {
-              const on    = i <= todayIdx
-              const today = i === todayIdx
+              const cellKey = weekDates[i]
+              const has     = weekDays.has(cellKey)
+              const today   = i === todayDow
+              const future  = i > todayDow
               return (
                 <div key={i} style={{
                   width: 28, height: 28, borderRadius: 100,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: today ? 'var(--sa-cool)' : on ? 'rgba(138,169,196,0.18)' : 'transparent',
-                  border: `1px solid ${on ? 'var(--sa-cool)' : 'var(--sa-rule)'}`,
+                  background: today ? 'var(--sa-cool)' : has ? 'rgba(138,169,196,0.18)' : 'transparent',
+                  border: `1px solid ${has || today ? 'var(--sa-cool)' : 'var(--sa-rule)'}`,
                   boxShadow: today ? '0 0 14px var(--sa-cool-glow)' : 'none',
+                  opacity: future ? 0.35 : 1,
                 }}>
-                  <span style={{ fontFamily: 'Newsreader, serif', fontSize: 11, color: today ? '#14110e' : on ? 'var(--sa-cool)' : 'var(--sa-ink-3)' }}>
+                  <span style={{ fontFamily: 'Newsreader, serif', fontSize: 11, color: today ? '#14110e' : has ? 'var(--sa-cool)' : 'var(--sa-ink-3)' }}>
                     {d}
                   </span>
                 </div>
@@ -303,13 +368,13 @@ function CoolClose({ onDone }) {
             })}
           </div>
           <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)' }}>
-            {todayIdx + 1} {todayIdx + 1 === 1 ? 'reset' : 'resets'} this week.
+            {weekVisits} {weekVisits === 1 ? 'reset' : 'resets'} this week.
           </div>
         </div>
       </div>
 
       <SaFloatingDock>
-        <button className="sa-cta" onClick={onDone} style={{
+        <button className="sa-cta" onClick={() => onDone({ mood, note })} style={{
           background: 'var(--sa-cool)',
           boxShadow: '0 8px 32px var(--sa-cool-glow), inset 0 1px 0 rgba(255,255,255,0.25)',
         }}>
