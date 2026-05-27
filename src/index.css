@@ -2,6 +2,7 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+<<<<<<< HEAD
 /* ── DESIGN TOKENS ── */
 :root {
   --safe-top:    env(safe-area-inset-top, 0px);
@@ -65,10 +66,48 @@ html, body, #root {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   color: var(--text-1);
+=======
+/* ── FONTS ── */
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('-apple-system'), local('BlinkMacSystemFont'), local('Helvetica Neue');
+}
+
+/* ── ROOT ── */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --accent: #3D6B35;
+  --accent-light: #5A9E4A;
+  --accent-glow: rgba(61,107,53,0.35);
+  --mode: definition;
+}
+
+:root[data-mode="strength"] {
+  --accent: #C47B1A;
+  --accent-light: #E09030;
+  --accent-glow: rgba(196,123,26,0.35);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  background: #080b14;
+  color: white;
+>>>>>>> f70bf3ebf97c6e10827c63b28d6e9c392955b2d9
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
 }
 
+<<<<<<< HEAD
 ::-webkit-scrollbar { display: none; }
 
 /* ── GLASS SURFACE ── */
@@ -328,3 +367,182 @@ body {
   background: var(--border);
   transition: background 0.4s var(--ease);
 }
+=======
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 0; }
+
+/* ── GLASS UTILITY ── */
+.glass {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+.glass-heavy {
+  background: rgba(255,255,255,0.13);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+
+.glass-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+/* Specular highlight — top edge shimmer */
+.glass-specular::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.18) 0%,
+    rgba(255,255,255,0.04) 40%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── ACCENT GLOW ── */
+.accent-glow {
+  box-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(0,0,0,0.3);
+}
+
+/* ── MESH GRADIENT BACKGROUND ── */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.mesh-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+/* ── SPRING TRANSITIONS ── */
+.spring-hover {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.spring-hover:active { transform: scale(0.96) !important; }
+
+/* ── iOS PICKER ── */
+.picker-scroll {
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.picker-scroll::-webkit-scrollbar { display: none; }
+.picker-item { scroll-snap-align: center; }
+
+/* ── TIMER RING ── */
+.timer-ring {
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+  transition: filter 0.5s ease;
+}
+
+/* ── CHIP ── */
+.chip-glass {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.chip-glass.selected {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.2);
+}
+.chip-glass:active { transform: scale(0.94); }
+
+/* ── BOTTOM NAV DOCK ── */
+.dock {
+  background: rgba(20,22,32,0.75);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.08),
+              0 24px 64px rgba(0,0,0,0.5),
+              inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+/* ── EXERCISE ROW ── */
+.ex-row-glass {
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.15s ease;
+}
+.ex-row-glass:active { background: rgba(255,255,255,0.09); }
+.ex-row-glass:last-child { border-bottom: none; }
+
+/* ── INFO CARD EXPAND ── */
+.info-expand {
+  overflow: hidden;
+  transition: max-height 0.42s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease;
+}
+
+/* ── SLIDER ── */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  outline: none;
+  border-radius: 2px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 3px rgba(255,255,255,0.2);
+  cursor: pointer;
+}
+
+/* ── PAGE TRANSITION ── */
+.page-enter { opacity: 0; transform: translateY(16px) scale(0.98); }
+.page-enter-active {
+  opacity: 1; transform: translateY(0) scale(1);
+  transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* ── TOGGLE TRACK ── */
+.mode-toggle-track {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+.mode-toggle-thumb {
+  position: absolute;
+  top: 2px; bottom: 2px;
+  width: calc(50% - 2px);
+  border-radius: 100px;
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.5s ease;
+  will-change: transform;
+}
+>>>>>>> f70bf3ebf97c6e10827c63b28d6e9c392955b2d9
