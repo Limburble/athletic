@@ -9,6 +9,7 @@ import CoolScreen       from './components/CoolScreen'
 import LogScreen        from './components/LogScreen'
 import RoomScreen       from './components/RoomScreen'
 import CheckinScreen    from './components/CheckinScreen'
+import ConfirmScreen    from './components/ConfirmScreen'
 import OnboardingScreen from './components/OnboardingScreen'
 
 const fade = {
@@ -40,6 +41,7 @@ export default function App() {
           {showOnboarding                     && <OnboardingScreen state={state} />}
           {!showOnboarding && tab === 'tonight'  && <TonightScreen    state={state} />}
           {tab === 'checkin'                     && <CheckinScreen    state={state} />}
+          {tab === 'confirm'                     && <ConfirmScreen    state={state} />}
           {tab === 'path'                        && <PathScreen       state={state} />}
           {tab === 'compose'                     && <ComposeScreen    state={state} />}
           {tab === 'deep'                        && <DeepScreen       state={state} />}

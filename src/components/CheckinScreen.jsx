@@ -76,11 +76,7 @@ export default function CheckinScreen({ state }) {
 
   function handleSave() {
     store.saveCheckin({ weight, heightFt, heightIn, arrived, aches, sleep, intention })
-    setTab('path')
-  }
-
-  function handleSkip() {
-    setTab('path')
+    setTab('confirm')
   }
 
   return (
@@ -91,8 +87,8 @@ export default function CheckinScreen({ state }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
         <span className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>WEEK OF {week.toUpperCase()}</span>
-        <span className="sa-tap" onClick={handleSkip}>
-          <SaIcon name="close" size={18} color="var(--sa-ink-3)" />
+        <span className="sa-tap" onClick={() => setTab('tonight')}>
+          <SaIcon name="back" size={18} color="var(--sa-ink-3)" />
         </span>
       </div>
 
@@ -277,14 +273,6 @@ export default function CheckinScreen({ state }) {
           Saved · step in
           <span className="arrow"><SaIcon name="arrowSm" size={16} color="#14110e" /></span>
         </button>
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          <span className="sa-tap" onClick={handleSkip} style={{
-            fontFamily: 'Newsreader, serif', fontStyle: 'italic',
-            fontSize: 13, color: 'var(--sa-ink-3)',
-          }}>
-            skip this week
-          </span>
-        </div>
       </SaFloatingDock>
     </div>
   )

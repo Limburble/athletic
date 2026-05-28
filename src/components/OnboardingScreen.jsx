@@ -3,9 +3,12 @@ import { SaIcon } from './SanctuaryAtoms'
 
 export default function OnboardingScreen({ state }) {
   const { store, setMode, setTab } = state
-  const [step,    setStep]    = useState(0)
-  const [name,    setName]    = useState('')
-  const [gym,     setGym]     = useState('')
+  const [step,       setStep]    = useState(0)
+  const [name,       setName]    = useState('')
+  const [gym,        setGym]     = useState('')
+  const [weight,     setWeight]  = useState(149)
+  const [heightFt,   setHF]      = useState(5)
+  const [heightIn,   setHI]      = useState(10)
   const [chosenMode, setChosenMode] = useState('def')
 
   function finish() {
@@ -13,6 +16,9 @@ export default function OnboardingScreen({ state }) {
       name:      name.trim() || 'Athlete',
       lastName:  '',
       gym:       gym.trim() || 'Your gym',
+      weight,
+      heightFt,
+      heightIn,
       onboarded: true,
     })
     setMode(chosenMode)
@@ -62,7 +68,7 @@ export default function OnboardingScreen({ state }) {
           />
         </div>
 
-        <div style={{ marginBottom: 40 }}>
+        <div style={{ marginBottom: 24 }}>
           <div className="sa-label" style={{ fontSize: 9, marginBottom: 8 }}>GYM (OPTIONAL)</div>
           <input
             value={gym}
@@ -79,6 +85,54 @@ export default function OnboardingScreen({ state }) {
               outline: 'none',
             }}
           />
+        </div>
+
+        <div style={{ marginBottom: 40 }}>
+          <div className="sa-label" style={{ fontSize: 9, marginBottom: 12 }}>BODY STATS (OPTIONAL)</div>
+          <div style={{ background: 'var(--sa-bg-2)', border: '1px solid var(--sa-rule-hi)', borderRadius: 18, overflow: 'hidden' }}>
+            {/* Weight */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--sa-rule)' }}>
+              <div>
+                <div className="sa-label" style={{ fontSize: 8, marginBottom: 3 }}>WEIGHT</div>
+                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 300, fontSize: 22, lineHeight: 1 }}>
+                  {weight}<span style={{ fontStyle: 'italic', color: 'var(--sa-ink-3)', fontSize: 14, marginLeft: 4 }}>lb</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['−', -1], ['+', 1]].map(([lbl, d]) => (
+                  <button key={lbl} className="sa-tap" onClick={() => setWeight(w => Math.max(80, w + d))} style={{
+                    width: 34, height: 34, borderRadius: 100,
+                    border: '1px solid var(--sa-rule-hi)', background: 'transparent',
+                    fontFamily: 'Newsreader, serif', fontSize: 18,
+                    color: 'var(--sa-ink-2)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{lbl}</button>
+                ))}
+              </div>
+            </div>
+            {/* Height */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
+              <div>
+                <div className="sa-label" style={{ fontSize: 8, marginBottom: 3 }}>HEIGHT</div>
+                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 18 }}>{heightFt}′{heightIn}″</div>
+              </div>
+              <div style={{ display: 'flex', gap: 16 }}>
+                {[
+                  { label: 'FT', val: heightFt, set: setHF, min: 4, max: 7 },
+                  { label: 'IN', val: heightIn, set: setHI, min: 0, max: 11 },
+                ].map(({ label, val, set, min, max }) => (
+                  <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div className="sa-label" style={{ fontSize: 7 }}>{label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button className="sa-tap" onClick={() => set(v => Math.max(min, v - 1))} style={{ width: 26, height: 26, borderRadius: 100, border: '1px solid var(--sa-rule-hi)', background: 'transparent', fontFamily: 'Newsreader, serif', fontSize: 16, color: 'var(--sa-ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                      <span style={{ fontFamily: 'Newsreader, serif', fontSize: 15, minWidth: 16, textAlign: 'center' }}>{val}</span>
+                      <button className="sa-tap" onClick={() => set(v => Math.min(max, v + 1))} style={{ width: 26, height: 26, borderRadius: 100, border: '1px solid var(--sa-rule-hi)', background: 'transparent', fontFamily: 'Newsreader, serif', fontSize: 16, color: 'var(--sa-ink-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

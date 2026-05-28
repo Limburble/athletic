@@ -233,9 +233,9 @@ export default function RoomScreen({ state }) {
             label="What you won't do"
             sub={banned.length > 0 ? `${banned.length} exercise${banned.length === 1 ? '' : 's'} banned` : 'Nothing banned yet'}
             chev
+            last
             onClick={() => setBoundariesOpen(true)}
           />
-          <RoomRow label="Notification quiet" sub="9pm — 7am. Always." chev last />
         </RoomSection>
 
         <div className="sa-enter" style={{ marginTop: 36, padding: '24px 22px', textAlign: 'center', animationDelay: '0.35s' }}>

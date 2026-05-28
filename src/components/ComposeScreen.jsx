@@ -79,7 +79,7 @@ export default function ComposeScreen({ state }) {
 
       {/* Nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
-        <span className="sa-tap" onClick={() => setTab('path')}>
+        <span className="sa-tap" onClick={() => setTab(state.workoutSource === 'path' ? 'path' : 'tonight')}>
           <SaIcon name="back" size={20} color="var(--sa-ink-2)" />
         </span>
         <SaModeTag mode={mode} />

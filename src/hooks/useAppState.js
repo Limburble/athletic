@@ -14,6 +14,8 @@ export function useAppState() {
   const [coolStep,      setCoolStep]     = useState('arrive')
   const [sessionStart,  setSessionStart] = useState(null)
   const [completedSets, setCompletedSets] = useState(null)
+  const [pendingConfig, setPendingConfig] = useState(null)
+  const [workoutSource, setWorkoutSource] = useState('path')
   const absRotation = useRef(0)
 
   function setMode(m) {
@@ -50,6 +52,7 @@ export function useAppState() {
     setCoolStep('arrive')
     setSessionStart(null)
     setCompletedSets(null)
+    setPendingConfig(null)
   }
 
   function goCool(csData = null) {
@@ -63,14 +66,24 @@ export function useAppState() {
     setTab('deep')
   }
 
-  // Determine if check-in should be prompted before Path
+  // Kick off a suggested workout — always requires checkin first
+  function beginWorkout(config) {
+    setPendingConfig(config)
+    setWorkoutSource('confirm')
+    setTab('checkin')
+  }
+
+  // After confirming the workout summary, compile and enter compose
+  function confirmWorkout() {
+    if (!pendingConfig) return
+    compile(pendingConfig)
+    setTab('compose')
+  }
+
+  // Manual path — go straight to the custom compiler
   function goPath() {
-    const isMonday = new Date().getDay() === 1
-    if (isMonday && !store.thisWeekCheckin) {
-      setTab('checkin')
-    } else {
-      setTab('path')
-    }
+    setWorkoutSource('path')
+    setTab('path')
   }
 
   return {
@@ -85,6 +98,10 @@ export function useAppState() {
     goCool,
     goDeep,
     goPath,
+    beginWorkout,
+    confirmWorkout,
+    pendingConfig,
+    workoutSource,
     coolStep, setCoolStep,
     sessionStart,
     completedSets,

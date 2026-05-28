@@ -96,8 +96,8 @@ export const SaDock = ({ tab, onTab }) => {
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '12px 24px 24px',
-      background: 'var(--sa-bg-0)',
+      padding: '32px 24px 24px',
+      background: 'linear-gradient(to bottom, transparent 0%, var(--sa-bg-0) 38%)',
       zIndex: 4,
     }}>
       <div style={{
@@ -165,14 +165,13 @@ export const SaSwitch = ({ on, onChange }) => (
   </div>
 )
 
-// Floating dock — solid black square at bottom, content scrolls behind
+// Floating dock — gradient fade, content scrolls underneath
 export const SaFloatingDock = ({ children }) => (
   <div style={{
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    padding: '20px 24px 28px',
-    background: 'var(--sa-bg-0)',
+    padding: '40px 24px 28px',
+    background: 'linear-gradient(to bottom, transparent 0%, var(--sa-bg-0) 35%)',
     zIndex: 5,
-    borderTop: '1px solid var(--sa-rule)',
   }}>
     {children}
   </div>

@@ -2,43 +2,120 @@ import React from 'react'
 import { SaTopBar, SaDock, SaIcon, SaStat } from './SanctuaryAtoms'
 import { SLOTS } from '../data/exercises'
 
-const ALL_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs']
+const ALL_GROUPS   = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs']
+const COMPOUND     = ['legs', 'chest', 'back', 'shoulders']
 
-function buildSuggestion(store) {
-  const { sessions, prefs, stats } = store
-  const mode = prefs.mode
+const ACHE_AVOIDS = {
+  shoulders: ['shoulders'],
+  lowback:   ['back'],
+  midback:   ['back'],
+  knees:     ['legs'],
+  hips:      ['legs'],
+}
 
-  // Find least-recently-trained groups from last 6 sessions
-  const groupCounts = {}
-  ALL_GROUPS.forEach(g => { groupCounts[g] = 0 })
-  sessions.slice(0, 6).forEach(s => {
-    (s.groups || []).forEach(g => { groupCounts[g] = (groupCounts[g] || 0) + 1 })
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
+
+function sessionGroupCounts(sessions, n = 8) {
+  const counts = {}
+  ALL_GROUPS.forEach(g => { counts[g] = 0 })
+  sessions.slice(0, n).forEach(s => {
+    (s.groups || []).forEach(g => { counts[g] = (counts[g] || 0) + 1 })
   })
-  const sorted = [...ALL_GROUPS].sort((a, b) => groupCounts[a] - groupCounts[b])
-  const groups = sessions.length === 0
-    ? ['chest', 'back']
-    : sorted.slice(0, 2)
+  return counts
+}
 
-  const slotIdx  = stats.lastSession?.slotIdx ?? 3
-  const minutes  = SLOTS[Math.min(slotIdx, SLOTS.length - 1)]?.v ?? 60
-  const effort   = mode === 'str' ? 'heavy' : 'medium'
-  const modeLabel = mode === 'str' ? 'strength' : 'definition'
-  const groupLabel = groups.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' & ')
+function buildSuggestions(store) {
+  const { sessions, prefs, stats, thisWeekCheckin } = store
+  const prefMode = prefs.mode
+  const counts   = sessionGroupCounts(sessions)
 
-  return { groups, slotIdx, minutes, effort, modeLabel, groupLabel, mode }
+  // Ache avoidance
+  const aches   = thisWeekCheckin?.aches || []
+  const cleared = aches.includes('clear')
+  const avoid   = cleared ? new Set() : new Set(aches.flatMap(a => ACHE_AVOIDS[a] || []))
+
+  // Energy / sleep adjustment
+  const arrived = thisWeekCheckin?.arrived
+  const sleep   = thisWeekCheckin?.sleep ?? 2
+  const tired   = arrived === 'tired' || arrived === 'wrecked' || sleep <= 1
+
+  // ── Primary ──────────────────────────────────────────────────────────────
+  const eligible     = ALL_GROUPS.filter(g => !avoid.has(g))
+  const sortedAll    = [...eligible].sort((a, b) => counts[a] - counts[b])
+  const primaryGroups = sessions.length === 0
+    ? ['chest', 'back'].filter(g => !avoid.has(g))
+    : sortedAll.slice(0, 2)
+
+  const baseSlot    = stats.lastSession?.slotIdx ?? 3
+  const primarySlot = tired ? Math.max(0, baseSlot - 1) : baseSlot
+  const primaryMin  = SLOTS[Math.min(primarySlot, SLOTS.length - 1)]?.v ?? 60
+  const primaryEffort = tired ? 'moderate' : prefMode === 'str' ? 'heavy' : 'medium'
+
+  const primary = {
+    groups:  primaryGroups,
+    mode:    prefMode,
+    slotIdx: primarySlot,
+    minutes: primaryMin,
+    effort:  primaryEffort,
+    label:   primaryGroups.map(cap).join(' & '),
+    body: tired
+      ? 'Taking it easier tonight — your check-in asked for it.'
+      : avoid.size > 0
+        ? `Skipping ${[...avoid].join(' & ')} based on your check-in. `
+          + 'These groups need the most attention.'
+        : sessions.length === 0
+          ? 'The classic foundations. A solid start.'
+          : 'Least-trained groups from your recent history.',
+  }
+
+  // ── Short Reset ───────────────────────────────────────────────────────────
+  const resetGroup = eligible.length > 0
+    ? [...eligible].sort((a, b) => counts[a] - counts[b])[0]
+    : 'shoulders'
+  const resetSlot  = tired ? 0 : 1
+  const shortReset = {
+    groups:  [resetGroup],
+    mode:    'def',
+    slotIdx: resetSlot,
+    minutes: SLOTS[resetSlot]?.v ?? 30,
+    effort:  'low',
+    label:   cap(resetGroup) + ', quick session',
+    body:    'One group. Light work. In and out.',
+  }
+
+  // ── Strength Evening ──────────────────────────────────────────────────────
+  const compoundEligible  = COMPOUND.filter(g => !avoid.has(g))
+  const sortedCompound    = [...compoundEligible].sort((a, b) => counts[a] - counts[b])
+  const strGroups = sortedCompound.length >= 2
+    ? sortedCompound.slice(0, 2)
+    : sortedCompound.length === 1
+      ? [sortedCompound[0], eligible.find(g => g !== sortedCompound[0])].filter(Boolean)
+      : ['chest', 'back']
+  const strSlot = 4
+  const strengthEvening = {
+    groups:  strGroups,
+    mode:    'str',
+    slotIdx: strSlot,
+    minutes: SLOTS[strSlot]?.v ?? 75,
+    effort:  'heavy',
+    label:   strGroups.map(cap).join(' & ') + ', strength',
+    body:    'Compound movement. Full strength focus.',
+  }
+
+  return { primary, shortReset, strengthEvening }
 }
 
 export default function TonightScreen({ state }) {
-  const { mode, setTab, store, goPath } = state
+  const { mode, setTab, store, goPath, beginWorkout } = state
 
   const now  = new Date()
   const hour = now.getHours()
   const tod  = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
   const ritual = {
-    morning:   { greeting: 'Good morning.',   verb: 'wake',       body: 'The room is bright.' },
-    afternoon: { greeting: 'Good afternoon.', verb: 'reset',      body: 'A moment to step out.' },
-    evening:   { greeting: 'Good evening.',   verb: 'decompress', body: 'The day is long enough.' },
-    night:     { greeting: 'Good night.',     verb: 'unwind',     body: 'The room is warm.' },
+    morning:   { greeting: 'Good morning.',   verb: 'wake'       },
+    afternoon: { greeting: 'Good afternoon.', verb: 'reset'      },
+    evening:   { greeting: 'Good evening.',   verb: 'decompress' },
+    night:     { greeting: 'Good night.',     verb: 'unwind'     },
   }[tod]
 
   const { lastVisitDaysAgo } = store.stats
@@ -48,7 +125,12 @@ export default function TonightScreen({ state }) {
     ? "You've already been in today."
     : `Last visit · ${lastVisitDaysAgo} ${lastVisitDaysAgo === 1 ? 'day' : 'days'} ago`
 
-  const sug = buildSuggestion(store)
+  const { primary, shortReset, strengthEvening } = buildSuggestions(store)
+
+  const alts = [
+    { ico: 'leaf',   config: shortReset,       label: shortReset.label,       sub: shortReset.body },
+    { ico: 'flower', config: strengthEvening,  label: strengthEvening.label,  sub: strengthEvening.body },
+  ]
 
   return (
     <div className="sa-app" data-sa-mode={mode}
@@ -71,7 +153,7 @@ export default function TonightScreen({ state }) {
           </div>
         </div>
 
-        {/* Suggested card */}
+        {/* Primary suggestion card */}
         <div style={{ padding: '32px 20px 0' }}>
           <div className="sa-panel sa-enter" style={{ animationDelay: '0.1s', padding: '28px 24px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
@@ -80,11 +162,11 @@ export default function TonightScreen({ state }) {
             </div>
 
             <div className="sa-serif-it" style={{ fontSize: 24, color: 'var(--sa-ink-1)', marginBottom: 8, lineHeight: 1.25 }}>
-              {sug.minutes} min of {sug.modeLabel}.<br/>{sug.groupLabel}, core.
+              {primary.minutes} min of {primary.mode === 'str' ? 'strength' : 'definition'}.<br/>
+              {primary.label}, core.
             </div>
             <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.6, marginBottom: 22 }}>
-              {ritual.body} Based on what you've trained recently.
-              {store.sessions.length === 0 ? ' A solid first session.' : ' These groups need the most attention.'}
+              {primary.body}
             </div>
 
             <div style={{
@@ -93,36 +175,31 @@ export default function TonightScreen({ state }) {
               borderBottom: '1px solid var(--sa-rule)',
               padding: '16px 0',
             }}>
-              <SaStat k="DURATION" v={String(sug.minutes)} sub="MIN" />
+              <SaStat k="DURATION" v={String(primary.minutes)} sub="MIN" />
               <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-              <SaStat k="EFFORT" v={sug.effort} />
+              <SaStat k="EFFORT" v={primary.effort} />
               <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-              <SaStat k="FOCUS" v={sug.groupLabel.split(' & ')[0].toLowerCase()} />
+              <SaStat k="FOCUS" v={primary.groups[0]?.toLowerCase() || 'full'} />
             </div>
 
-            <button className="sa-cta" onClick={goPath}>
+            <button className="sa-cta" onClick={() => beginWorkout(primary)}>
               Begin
               <span className="arrow"><SaIcon name="arrowSm" size={18} color="#14110e" /></span>
             </button>
           </div>
         </div>
 
-        {/* Alternatives */}
+        {/* Alternative paths */}
         <div className="sa-enter" style={{ padding: '24px 28px 0', animationDelay: '0.2s' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span className="sa-label">Or compose your own</span>
-            <span className="sa-label" style={{ color: 'var(--sa-ink-3)' }}>3 OPTIONS</span>
+            <span className="sa-label">Or choose a different path</span>
           </div>
 
-          {[
-            { ico: 'leaf',   t: 'A short reset',    s: '20 minutes · low effort · core only',   onClick: goPath },
-            { ico: 'flower', t: 'Strength evening',  s: '75 minutes · heavy compound · legs',    onClick: goPath },
-            { ico: 'timer',  t: 'Check-in first',    s: 'Rate your body before composing',        onClick: () => setTab('checkin') },
-          ].map((opt, i) => (
-            <div key={i} className="sa-tap" onClick={opt.onClick} style={{
+          {alts.map((opt, i) => (
+            <div key={i} className="sa-tap" onClick={() => beginWorkout(opt.config)} style={{
               display: 'flex', alignItems: 'center',
               padding: '18px 4px',
-              borderBottom: i < 2 ? '1px solid var(--sa-rule)' : 'none',
+              borderBottom: '1px solid var(--sa-rule)',
               gap: 16,
             }}>
               <div style={{
@@ -134,15 +211,46 @@ export default function TonightScreen({ state }) {
               }}>
                 <SaIcon name={opt.ico} size={18} color="var(--sa-ink-2)" />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 2 }}>
-                  {opt.t}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                  <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)' }}>
+                    {opt.label}
+                  </div>
+                  <span style={{
+                    fontSize: 8, fontFamily: 'var(--sa-mono-font, monospace)', letterSpacing: '0.08em',
+                    color: 'var(--sa-accent)', background: 'var(--sa-accent-aura)',
+                    padding: '2px 7px', borderRadius: 100,
+                  }}>SUGGESTED</span>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--sa-ink-3)' }}>{opt.s}</div>
+                <div style={{ fontSize: 12, color: 'var(--sa-ink-3)' }}>{opt.sub}</div>
               </div>
               <SaIcon name="chevR" size={14} color="var(--sa-ink-3)" />
             </div>
           ))}
+
+          {/* Start from scratch */}
+          <div className="sa-tap" onClick={goPath} style={{
+            display: 'flex', alignItems: 'center',
+            padding: '18px 4px',
+            gap: 16,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 100,
+              background: 'var(--sa-bg-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '1px solid var(--sa-rule)',
+              flexShrink: 0,
+            }}>
+              <SaIcon name="timer" size={18} color="var(--sa-ink-2)" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 2 }}>
+                Start from scratch
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--sa-ink-3)' }}>Build a custom session in the compiler.</div>
+            </div>
+            <SaIcon name="chevR" size={14} color="var(--sa-ink-3)" />
+          </div>
         </div>
 
         {/* Footer */}
