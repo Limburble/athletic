@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { SaIcon } from './SanctuaryAtoms'
+import MuscleMap, { EX_MUSCLES, muscleLabel } from './MuscleMap'
 
 const INFO_VARIANTS = {
   initial: { opacity: 0, y: -6, scale: 0.98 },
@@ -389,6 +390,17 @@ export default function DeepScreen({ state }) {
 
           {/* Checkmark + skip — centered in remaining space */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            {(() => {
+              const mm = EX_MUSCLES[currEx.key] || { p: [], s: [] }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+                  <MuscleMap active={mm.p} secondary={mm.s} mode={mode} width={180} />
+                  <div className="sa-label" style={{ fontSize: 9, marginTop: 12, color: 'var(--sa-accent)' }}>
+                    {muscleLabel(mm.p)}
+                  </div>
+                </div>
+              )
+            })()}
             <button className="sa-tap" onClick={markSetDone} style={{
               width: 88, height: 88, borderRadius: 100, border: 'none',
               background: 'var(--sa-accent)',
