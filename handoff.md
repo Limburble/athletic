@@ -173,7 +173,122 @@ git push origin main
 
 ## known issues / next steps
 
-Nothing is blocking. Potential future improvements:
+---
+
+### 🔜 Next: Gym hours + home/gym state
+
+Allow the user to set custom gym open/close times. When the gym is closed the app switches to a **home mode** — bodyweight/no-equipment workouts only — and returns to the normal gym state when it reopens. A live open/closed indicator on TonightScreen replaces the current "sauna is still open" copy.
+
+---
+
+#### Data
+
+Add to `profile` in `src/data/store.js`:
+
+```js
+gymOpen:  '05:30',   // 24h HH:MM strings
+gymClose: '22:00',
+gymDays:  [1,2,3,4,5,6,0],  // JS getDay() — default every day
+```
+
+Add a derived bool to `buildStore` / `computeStats`:
+
+```js
+gymIsOpen: isGymOpen(profile)   // recomputed on every render
+```
+
+```js
+function isGymOpen({ gymOpen, gymClose, gymDays }) {
+  const now = new Date()
+  if (!gymDays.includes(now.getDay())) return false
+  const [oh, om] = gymOpen.split(':').map(Number)
+  const [ch, cm] = gymClose.split(':').map(Number)
+  const mins = now.getHours() * 60 + now.getMinutes()
+  return mins >= oh * 60 + om && mins < ch * 60 + cm
+}
+```
+
+---
+
+#### Home mode workout pool
+
+Add a `HOME_POOL` to `src/data/exercises.js` — bodyweight-only exercises keyed by muscle group. Mirror the shape of `DEF_POOL` / `STR_POOL`. Examples:
+
+```js
+export const HOME_POOL = {
+  chest:     [['pushUp', 3, '12–15'], ['widePushUp', 3, '10–12'], ['dipsChair', 3, '10']],
+  back:      [['invRow', 3, '10–12'], ['superhero', 3, '12']],
+  legs:      [['squat', 3, '15–20'], ['lunge', 3, '12ea'], ['wallSit', 3, '45s']],
+  shoulders: [['pikePushUp', 3, '10–12'], ['lateralRaise', 3, '15']],  // bands ok
+  abs:       [['plank', 3, '45s'], ['mountainClimber', 3, '20'], ['sidePlank', 3, '30s']],
+  ...
+}
+```
+
+Add form cues + `EX_MUSCLES` entries for each new key.
+
+---
+
+#### Workout generation
+
+In `buildRoutine` (`src/data/exercises.js` or wherever it lives), thread through a `useHome` flag:
+
+```js
+buildRoutine({ groups, slots, useHome: !gymIsOpen })
+// → picks from HOME_POOL instead of DEF_POOL / STR_POOL when true
+```
+
+`buildSuggestions` in `TonightScreen.jsx` already reads `store` — pass `gymIsOpen` down and swap the pool source there too.
+
+---
+
+#### TonightScreen — open/closed indicator
+
+Replace the "sauna is still open" / ambient copy block with a dynamic gym status chip:
+
+```jsx
+// Gym status chip — top of TonightScreen below the top bar
+<div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px', marginBottom: 4 }}>
+  <span style={{
+    width: 7, height: 7, borderRadius: '50%',
+    background: gymIsOpen ? 'var(--sa-def)' : 'var(--sa-ink-4)',
+    boxShadow: gymIsOpen ? '0 0 8px var(--sa-def-glow)' : 'none',
+  }} />
+  <span style={{ fontSize: 12, color: 'var(--sa-ink-3)', fontFamily: 'Geist, sans-serif' }}>
+    {gymIsOpen ? `${profile.gym} is open` : `${profile.gym} is closed · home session`}
+  </span>
+</div>
+```
+
+When `!gymIsOpen`, the suggestion cards should label themselves "Home" instead of the mode name, and the effort/duration defaults can shift to bodyweight-appropriate ranges.
+
+---
+
+#### RoomScreen — gym hours settings
+
+Add a new **"Your gym"** `RoomSection` with:
+
+- Gym name (already editable in the athlete card — can cross-link or duplicate)
+- Open time picker — `<input type="time">` styled to match `sa-textarea`
+- Close time picker — same
+- Days of week toggles — 7 pill buttons (M T W T F S S), multi-select, active = `on` style
+
+Save on blur/change via `store.updateProfile({ gymOpen, gymClose, gymDays })`.
+
+---
+
+#### Suggested implementation order
+
+1. `store.js` — add fields + `isGymOpen` helper + `gymIsOpen` in derived stats
+2. `exercises.js` — add `HOME_POOL` + exercise entries + `EX_MUSCLES` for new keys
+3. `buildRoutine` — accept + use `useHome` flag
+4. `TonightScreen` — swap suggestions source + add open/closed chip
+5. `RoomScreen` — gym hours section
+6. Test: set close time to now → confirm home pool loads → advance time → confirm gym pool returns
+
+---
+
+### Other potential improvements
 
 - **Push notifications** — native reminder when streak is at risk (requires PWA manifest + service worker)
 - **Weight progression tracking** — log actual weight lifted per set in DeepScreen, surface trends in LogScreen
