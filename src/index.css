@@ -343,21 +343,7 @@ body {
   background: linear-gradient(90deg, transparent 0%, var(--sa-rule-hi) 50%, transparent 100%);
 }
 
-/* ── Floating dock (gradient fade + CTA container) ── */
-.sa-floating-dock {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding-top: 48px;
-  padding-bottom: 24px;
-  padding-left: 24px; padding-right: 24px;
-  background: linear-gradient(to top,
-    var(--sa-bg-0) 0%,
-    var(--sa-bg-0) 36%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 5;
-}
-.sa-floating-dock > * { pointer-events: auto; }
+/* .sa-floating-dock removed — replaced with inline solid-background SaFloatingDock */
 
 /* ── Textarea ── */
 .sa-textarea {

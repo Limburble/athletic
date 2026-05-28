@@ -1,12 +1,35 @@
 import React, { useState } from 'react'
-import { SaIcon, SaStat, SaSwitch } from './SanctuaryAtoms'
+import { SaIcon, SaStat, SaSwitch, SaDock } from './SanctuaryAtoms'
+import { DEF_POOL, STR_POOL, EX } from '../data/exercises'
+
+// All unique exercise keys across both pools
+const _ALL_KEYS = [...new Set([
+  ...Object.values(DEF_POOL).flat().map(([k]) => k),
+  ...Object.values(STR_POOL).flat().map(([k]) => k),
+])].filter(k => EX[k])
+
+// Display list — deduplicated by exercise name
+const ALL_EXERCISE_KEYS = (() => {
+  const seen = new Set()
+  return _ALL_KEYS.filter(k => {
+    const name = EX[k].n
+    if (seen.has(name)) return false
+    seen.add(name)
+    return true
+  })
+})()
+
+// Name → all keys map (for banning synonyms like facePull + facePullSh)
+const NAME_TO_KEYS = _ALL_KEYS.reduce((acc, k) => {
+  const n = EX[k].n
+  acc[n] = acc[n] ? [...acc[n], k] : [k]
+  return acc
+}, {})
 
 function RoomSection({ title, children, delay = 0 }) {
   return (
     <div className="sa-enter" style={{ marginBottom: 24, animationDelay: `${delay}s` }}>
-      <div className="sa-label" style={{ marginBottom: 10, fontSize: 9, paddingLeft: 4 }}>
-        {title.toUpperCase()}
-      </div>
+      <div className="sa-label" style={{ marginBottom: 10, fontSize: 9, paddingLeft: 4 }}>{title.toUpperCase()}</div>
       <div style={{ background: 'var(--sa-bg-elev)', border: '1px solid var(--sa-rule)', borderRadius: 22, overflow: 'hidden' }}>
         {children}
       </div>
@@ -14,18 +37,16 @@ function RoomSection({ title, children, delay = 0 }) {
   )
 }
 
-function RoomRow({ label, sub, children, chev, last }) {
+function RoomRow({ label, sub, children, chev, last, onClick }) {
   return (
-    <div className="sa-tap" style={{
+    <div className="sa-tap" onClick={onClick} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '14px 20px',
       borderBottom: last ? 'none' : '1px solid var(--sa-rule)',
       gap: 14,
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 15, color: 'var(--sa-ink-1)', letterSpacing: '-0.005em', marginBottom: sub ? 3 : 0 }}>
-          {label}
-        </div>
+        <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 15, color: 'var(--sa-ink-1)', letterSpacing: '-0.005em', marginBottom: sub ? 3 : 0 }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: 'var(--sa-ink-3)', lineHeight: 1.45 }}>{sub}</div>}
       </div>
       {chev ? <SaIcon name="chevR" size={14} color="var(--sa-ink-3)" /> : children}
@@ -37,16 +58,37 @@ export default function RoomScreen({ state }) {
   const { mode, setMode, light, setLight, setTab, store } = state
   const { profile, stats } = store
 
-  // Local toggle state — initialised from stored prefs, persisted on change
-  const [haptics,   setHapticsState]   = useState(store.prefs.haptics)
-  const [ambient,   setAmbientState]   = useState(store.prefs.ambient)
-  const [hydration, setHydrationState] = useState(store.prefs.hydration)
-  const [keepOn,    setKeepOnState]    = useState(store.prefs.keepOn)
+  const [haptics,      setHapticsState]   = useState(store.prefs.haptics)
+  const [ambient,      setAmbientState]   = useState(store.prefs.ambient)
+  const [hydration,    setHydrationState] = useState(store.prefs.hydration)
+  const [keepOn,       setKeepOnState]    = useState(store.prefs.keepOn)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [editName,     setEditName]       = useState(profile.name)
+  const [editLast,     setEditLast]       = useState(profile.lastName)
+  const [editGym,      setEditGym]        = useState(profile.gym)
+  const [boundariesOpen, setBoundariesOpen] = useState(false)
 
-  const setHaptics   = (v) => { setHapticsState(v);   store.updatePrefs({ haptics:   v }) }
-  const setAmbient   = (v) => { setAmbientState(v);   store.updatePrefs({ ambient:   v }) }
-  const setHydration = (v) => { setHydrationState(v); store.updatePrefs({ hydration: v }) }
-  const setKeepOn    = (v) => { setKeepOnState(v);    store.updatePrefs({ keepOn:    v }) }
+  const banned = profile.banned || []
+
+  function setHaptics(v)   { setHapticsState(v);   store.updatePrefs({ haptics:   v }) }
+  function setAmbient(v)   { setAmbientState(v);   store.updatePrefs({ ambient:   v }) }
+  function setHydration(v) { setHydrationState(v); store.updatePrefs({ hydration: v }) }
+  function setKeepOn(v)    { setKeepOnState(v);     store.updatePrefs({ keepOn:    v }) }
+
+  function saveProfile() {
+    store.updateProfile({ name: editName.trim() || profile.name, lastName: editLast.trim(), gym: editGym.trim() || profile.gym })
+    setEditingProfile(false)
+  }
+
+  function toggleBan(key) {
+    // Ban/unban all keys sharing the same name (handles facePull + facePullSh)
+    const aliases = NAME_TO_KEYS[EX[key]?.n] || [key]
+    const isBanned = aliases.some(k => banned.includes(k))
+    const next = isBanned
+      ? banned.filter(k => !aliases.includes(k))
+      : [...new Set([...banned, ...aliases])]
+    store.updateProfile({ banned: next })
+  }
 
   return (
     <div className="sa-app" data-sa-mode={mode} data-sa-light={light}
@@ -62,44 +104,75 @@ export default function RoomScreen({ state }) {
         <span style={{ width: 20 }} />
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 28px 28px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 28px 96px' }}>
 
         <div className="sa-enter" style={{ marginBottom: 28 }}>
           <div className="sa-serif" style={{ fontSize: 32, marginBottom: 8 }}>
             Tune the <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>atmosphere.</em>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.55 }}>
-            Small adjustments to how the room feels.
-          </div>
+          <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.55 }}>Small adjustments to how the room feels.</div>
         </div>
 
         {/* Athlete card */}
         <div className="sa-panel sa-enter" style={{ padding: '22px 24px', marginBottom: 24, animationDelay: '0.1s' }}>
-          <div className="sa-label" style={{ fontSize: 9, marginBottom: 10 }}>WHOSE ROOM</div>
-          <div className="sa-serif" style={{ fontSize: 26, marginBottom: 4 }}>
-            {profile.name} <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>{profile.lastName}.</em>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="sa-label" style={{ fontSize: 9 }}>WHOSE ROOM</div>
+            <span className="sa-tap" onClick={() => { setEditName(profile.name); setEditLast(profile.lastName); setEditGym(profile.gym); setEditingProfile(v => !v) }}>
+              <SaIcon name={editingProfile ? 'close' : 'chevR'} size={14} color="var(--sa-ink-3)" />
+            </span>
           </div>
-          <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginBottom: 16 }}>
-            {profile.heightFt}'{profile.heightIn}" · {profile.weight} lb · {profile.gym}
-          </div>
+
+          {!editingProfile ? (
+            <>
+              <div className="sa-serif" style={{ fontSize: 26, marginBottom: 4 }}>
+                {profile.name}{profile.lastName ? <> <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>{profile.lastName}.</em></> : <em style={{ fontStyle: 'italic', color: 'var(--sa-accent)' }}>.</em>}
+              </div>
+              <div className="sa-serif-it" style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginBottom: 16 }}>
+                {profile.heightFt}'{profile.heightIn}" · {profile.weight} lb · {profile.gym}
+              </div>
+            </>
+          ) : (
+            <div className="sa-enter" style={{ marginBottom: 16 }}>
+              {[
+                { label: 'FIRST NAME', val: editName,  set: setEditName,  ph: 'Name' },
+                { label: 'LAST NAME',  val: editLast,  set: setEditLast,  ph: 'Last' },
+                { label: 'GYM',        val: editGym,   set: setEditGym,   ph: 'Gym name' },
+              ].map(f => (
+                <div key={f.label} style={{ marginBottom: 10 }}>
+                  <div className="sa-label" style={{ fontSize: 9, marginBottom: 5 }}>{f.label}</div>
+                  <input value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph} style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--sa-bg-2)', border: '1px solid var(--sa-rule-hi)',
+                    borderRadius: 12, fontFamily: 'Newsreader, serif',
+                    fontSize: 16, fontStyle: 'italic', color: 'var(--sa-ink-1)', outline: 'none',
+                  }} />
+                </div>
+              ))}
+              <button onClick={saveProfile} style={{
+                width: '100%', padding: '11px 0', borderRadius: 100,
+                background: 'var(--sa-accent)', border: 'none',
+                fontFamily: 'Newsreader, serif', fontStyle: 'italic',
+                fontSize: 15, color: '#14110e', cursor: 'pointer', marginTop: 4,
+              }}>
+                Save changes
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 0, paddingTop: 16, borderTop: '1px solid var(--sa-rule)' }}>
-            <SaStat k="VISITS"  v={stats.visits  > 0 ? String(stats.visits)  : '0'} light />
+            <SaStat k="VISITS"  v={String(stats.visits  || 0)} light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="DAYS IN" v={stats.daysIn  > 0 ? String(stats.daysIn)  : '0'} light />
+            <SaStat k="DAYS IN" v={String(stats.daysIn  || 0)} light />
             <div style={{ width: 1, background: 'var(--sa-rule)' }} />
-            <SaStat k="STREAK"  v={stats.streak  > 0 ? String(stats.streak)  : '0'} light />
+            <SaStat k="STREAK"  v={String(stats.streak  || 0)} light />
           </div>
         </div>
 
         {/* Atmosphere */}
         <RoomSection title="Atmosphere" delay={0.15}>
-          {/* Light toggle */}
           <RoomRow label="Light" sub="Dusk by default. Morning when bright.">
             <div style={{ display: 'flex', gap: 0, background: 'var(--sa-bg-2)', border: '1px solid var(--sa-rule)', borderRadius: 100, padding: 3 }}>
-              {[
-                { id: false, ico: 'moon', label: 'Dusk'    },
-                { id: true,  ico: 'sun',  label: 'Morning' },
-              ].map(o => {
+              {[{ id: false, ico: 'moon', label: 'Dusk' }, { id: true, ico: 'sun', label: 'Morning' }].map(o => {
                 const on = light === o.id
                 return (
                   <span key={String(o.id)} className="sa-tap" onClick={() => setLight(o.id)} style={{
@@ -118,8 +191,6 @@ export default function RoomScreen({ state }) {
               })}
             </div>
           </RoomRow>
-
-          {/* Mode toggle */}
           <RoomRow label="Default mode" sub="The starting tempo.">
             <div style={{ display: 'flex', gap: 0, background: 'var(--sa-bg-2)', border: '1px solid var(--sa-rule)', borderRadius: 100, padding: 3 }}>
               {['def', 'str'].map(m => {
@@ -138,7 +209,6 @@ export default function RoomScreen({ state }) {
               })}
             </div>
           </RoomRow>
-
           <RoomRow label="Ambient motion" sub="The slow breathing of the room." last>
             <SaSwitch on={ambient} onChange={setAmbient} />
           </RoomRow>
@@ -157,27 +227,75 @@ export default function RoomScreen({ state }) {
           </RoomRow>
         </RoomSection>
 
-        {/* Gym */}
-        <RoomSection title="What's in your gym" delay={0.25}>
-          <RoomRow label={profile.gym} sub="Dumbbells, cables, smith, benches. Set up." chev last />
-        </RoomSection>
-
-        <RoomSection title="Boundaries" delay={0.3}>
-          <RoomRow label="What you won't do" sub="4 exercises banned from rotation." chev />
+        {/* Boundaries */}
+        <RoomSection title="Boundaries" delay={0.25}>
+          <RoomRow
+            label="What you won't do"
+            sub={banned.length > 0 ? `${banned.length} exercise${banned.length === 1 ? '' : 's'} banned` : 'Nothing banned yet'}
+            chev
+            onClick={() => setBoundariesOpen(true)}
+          />
           <RoomRow label="Notification quiet" sub="9pm — 7am. Always." chev last />
         </RoomSection>
 
-        {/* Closing quote */}
         <div className="sa-enter" style={{ marginTop: 36, padding: '24px 22px', textAlign: 'center', animationDelay: '0.35s' }}>
           <div className="sa-serif-it" style={{ fontSize: 15, color: 'var(--sa-ink-2)', marginBottom: 12, lineHeight: 1.5 }}>
             "An instrument. Every element serves a function,
             and that function is immediately legible."
           </div>
-          <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>
-            VERSION 2.0 · THE SANCTUARY · 2026
-          </div>
+          <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>VERSION 2.0 · THE SANCTUARY · 2026</div>
         </div>
       </div>
+
+      <SaDock tab="room" onTab={(t) => setTab(t)} />
+
+      {/* Boundaries sheet */}
+      {boundariesOpen && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'var(--sa-bg-0)',
+          zIndex: 20, display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--sa-rule)' }}>
+            <span className="sa-label">WHAT YOU WON'T DO</span>
+            <span className="sa-tap" onClick={() => setBoundariesOpen(false)}>
+              <SaIcon name="close" size={18} color="var(--sa-ink-2)" />
+            </span>
+          </div>
+          <div style={{ padding: '12px 18px 8px' }}>
+            <div style={{ fontSize: 12, color: 'var(--sa-ink-3)', lineHeight: 1.5 }}>
+              Banned exercises are removed from all generated routines.
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px 32px' }}>
+            {ALL_EXERCISE_KEYS.map(key => {
+              const ex    = EX[key]
+              const isBan = banned.includes(key)
+              return (
+                <div key={key} className="sa-tap" onClick={() => toggleBan(key)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '13px 4px', borderBottom: '1px solid var(--sa-rule)',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 15, color: isBan ? 'var(--sa-ink-4)' : 'var(--sa-ink-1)', textDecoration: isBan ? 'line-through' : 'none' }}>
+                      {ex.n}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: 6,
+                    border: `1px solid ${isBan ? 'var(--sa-str)' : 'var(--sa-rule-hi)'}`,
+                    background: isBan ? 'var(--sa-str)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 0.3s var(--sa-settle)',
+                  }}>
+                    {isBan && <SaIcon name="close" size={10} color="#14110e" />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

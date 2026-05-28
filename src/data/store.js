@@ -5,12 +5,14 @@ const STORE_KEY = 'sa-store-v1'
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
 export const DEFAULT_PROFILE = {
-  name:     'Brayden',
-  lastName: 'L',
-  gym:      'Club Greenwood',
-  weight:   149,
-  heightFt: 5,
-  heightIn: 10,
+  name:      'Brayden',
+  lastName:  'L',
+  gym:       'Club Greenwood',
+  weight:    149,
+  heightFt:  5,
+  heightIn:  10,
+  onboarded: false,
+  banned:    [],
 }
 
 const DEFAULT_PREFS = {
@@ -24,7 +26,6 @@ const DEFAULT_PREFS = {
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
 
-/** ISO 8601 week key, e.g. "2026-W22". Week starts Monday. */
 export function isoWeekKey(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const dayNum = d.getUTCDay() || 7
@@ -34,23 +35,20 @@ export function isoWeekKey(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
 }
 
-/** Midnight-normalised timestamp for a date (local time). */
 export function dayKey(date = new Date()) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
 
-/** Whole days elapsed since a timestamp. Always >= 0. */
 export function daysAgo(timestamp) {
   return Math.max(0, Math.round((dayKey() - dayKey(new Date(timestamp))) / 86400000))
 }
 
-/** Monday 00:00 of the week containing `date` (local time). */
 export function weekMonday(date = new Date()) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
-  const day = d.getDay() || 7   // 1 = Mon … 7 = Sun
+  const day = d.getDay() || 7
   d.setDate(d.getDate() - (day - 1))
   return d
 }
@@ -61,7 +59,6 @@ function computeStreak(sessions) {
   if (!sessions.length) return 0
   const days = new Set(sessions.map(s => dayKey(new Date(s.timestamp))))
   let cur = dayKey()
-  // Allow current-day or yesterday so an in-progress session counts
   if (!days.has(cur)) {
     cur -= 86400000
     if (!days.has(cur)) return 0
@@ -102,8 +99,8 @@ function buildStore(raw) {
   const rawSess  = Array.isArray(base.sessions) ? base.sessions : []
   const sessions = [...rawSess].sort((a, b) => b.timestamp - a.timestamp)
 
-  const now4w    = Date.now() - 28 * 86400000
-  const recent   = sessions.filter(s => s.timestamp >= now4w)
+  const now4w   = Date.now() - 28 * 86400000
+  const recent  = sessions.filter(s => s.timestamp >= now4w)
 
   const stats = {
     visits:           sessions.length,
@@ -145,7 +142,6 @@ export function useSanctuaryStore() {
     })
   }, [])
 
-  /** Save (or replace) the check-in for the current ISO week. */
   const saveCheckin = useCallback((data) => {
     update(prev => ({
       ...prev,
@@ -153,7 +149,6 @@ export function useSanctuaryStore() {
         ...prev.checkins.filter(c => c.weekKey !== isoWeekKey()),
         { ...data, weekKey: isoWeekKey(), date: new Date().toISOString().slice(0, 10) },
       ],
-      // Sync body metrics back to profile
       profile: {
         ...prev.profile,
         ...(data.weight   !== undefined ? { weight:   data.weight   } : {}),
@@ -163,7 +158,6 @@ export function useSanctuaryStore() {
     }))
   }, [update])
 
-  /** Append a completed workout session. */
   const saveSession = useCallback((data) => {
     update(prev => ({
       ...prev,
@@ -176,6 +170,17 @@ export function useSanctuaryStore() {
     }))
   }, [update])
 
+  const deleteSession = useCallback((id) => {
+    update(prev => ({ ...prev, sessions: prev.sessions.filter(s => s.id !== id) }))
+  }, [update])
+
+  const updateSession = useCallback((id, data) => {
+    update(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(s => s.id === id ? { ...s, ...data } : s),
+    }))
+  }, [update])
+
   const updateProfile = useCallback((data) => {
     update(prev => ({ ...prev, profile: { ...prev.profile, ...data } }))
   }, [update])
@@ -184,5 +189,5 @@ export function useSanctuaryStore() {
     update(prev => ({ ...prev, prefs: { ...prev.prefs, ...data } }))
   }, [update])
 
-  return { ...store, saveCheckin, saveSession, updateProfile, updatePrefs }
+  return { ...store, saveCheckin, saveSession, deleteSession, updateSession, updateProfile, updatePrefs }
 }

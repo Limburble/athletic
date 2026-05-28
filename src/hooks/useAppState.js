@@ -1,21 +1,21 @@
 import { useState, useRef } from 'react'
-import { buildRoutine } from '../data/exercises'
+import { buildRoutine, SLOTS, MUSCLES } from '../data/exercises'
 import { useSanctuaryStore } from '../data/store'
 
 export function useAppState() {
   const store = useSanctuaryStore()
 
-  const [tab,          setTab]         = useState('tonight')
-  const [mode,         setModeState]   = useState(() => store.prefs.mode)
-  const [light,        setLightState]  = useState(() => store.prefs.light)
-  const [slotIdx,      setSlotIdx]     = useState(3)   // default: 60 min
-  const [groups,       setGroups]      = useState([])
-  const [workout,      setWorkout]     = useState(null)
-  const [coolStep,     setCoolStep]    = useState('arrive')
-  const [sessionStart, setSessionStart] = useState(null)
+  const [tab,           setTab]          = useState('tonight')
+  const [mode,          setModeState]    = useState(() => store.prefs.mode)
+  const [light,         setLightState]   = useState(() => store.prefs.light)
+  const [slotIdx,       setSlotIdx]      = useState(3)
+  const [groups,        setGroups]       = useState([])
+  const [workout,       setWorkout]      = useState(null)
+  const [coolStep,      setCoolStep]     = useState('arrive')
+  const [sessionStart,  setSessionStart] = useState(null)
+  const [completedSets, setCompletedSets] = useState(null)
   const absRotation = useRef(0)
 
-  // Wrappers that also persist prefs
   function setMode(m) {
     setModeState(m)
     store.updatePrefs({ mode: m })
@@ -34,7 +34,8 @@ export function useAppState() {
     const useGroups  = g ?? groups
     const useMode    = m ?? mode
     const useSlotIdx = s ?? slotIdx
-    const result = buildRoutine(useGroups, useMode, useSlotIdx, absRotation.current)
+    const banned     = store.profile.banned || []
+    const result = buildRoutine(useGroups, useMode, useSlotIdx, absRotation.current, banned)
     absRotation.current = (absRotation.current + 1) % 5
     setWorkout(result)
     if (g !== undefined) setGroups(g)
@@ -48,17 +49,28 @@ export function useAppState() {
     setGroups([])
     setCoolStep('arrive')
     setSessionStart(null)
+    setCompletedSets(null)
   }
 
-  function goCool() {
+  function goCool(csData = null) {
+    setCompletedSets(csData)
     setCoolStep('arrive')
     setTab('cool')
   }
 
-  /** Begin the deep-work screen, recording the session start timestamp. */
   function goDeep() {
     setSessionStart(Date.now())
     setTab('deep')
+  }
+
+  // Determine if check-in should be prompted before Path
+  function goPath() {
+    const isMonday = new Date().getDay() === 1
+    if (isMonday && !store.thisWeekCheckin) {
+      setTab('checkin')
+    } else {
+      setTab('path')
+    }
   }
 
   return {
@@ -72,8 +84,10 @@ export function useAppState() {
     reset,
     goCool,
     goDeep,
+    goPath,
     coolStep, setCoolStep,
     sessionStart,
+    completedSets,
     store,
   }
 }

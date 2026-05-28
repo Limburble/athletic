@@ -1,97 +1,156 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { SaIcon } from './SanctuaryAtoms'
 
-// Work/rest times per mode (seconds)
-const WORK_TIME = { def: 45, str: 90 }
-const REST_TIME = { def: 20, str: 45 }
+// Parse "4 × 8–12 (75s)" → 4
+function parseSets(spec) {
+  if (!spec) return 3
+  const m = spec.match(/^(\d+)/)
+  return m ? parseInt(m[1]) : 3
+}
+
+// Parse rest from last parenthetical: "(75s)" → 75, "(2 min)" → 120, "(2.5 min)" → 150
+function parseRestSec(spec) {
+  if (!spec) return 60
+  const all = [...spec.matchAll(/\(([^)]+)\)/g)]
+  if (!all.length) return 60
+  const last = all[all.length - 1][1].trim()
+  const minM = last.match(/^([\d.]+)\s*min$/)
+  if (minM) return Math.round(parseFloat(minM[1]) * 60)
+  const secM = last.match(/^(\d+)s$/)
+  if (secM) return parseInt(secM[1])
+  return 60
+}
+
+// Build a flat list of work/rest intervals from exercises
+function buildIntervals(exercises, isStr) {
+  const workSec = isStr ? 25 : 40
+  const result  = []
+
+  exercises.forEach(ex => {
+    const spec      = isStr ? ex.s : ex.d
+    const totalSets = parseSets(spec)
+    const restSec   = parseRestSec(spec)
+    const key       = ex.key || ex.n
+
+    for (let set = 1; set <= totalSets; set++) {
+      result.push({ type: 'work', key, name: ex.n, setNum: set, totalSets, workSec })
+      // Rest after every set; inter-exercise rest = 15s after last set
+      result.push({
+        type: 'rest', key, name: ex.n, setNum: set, totalSets,
+        restSec: set < totalSets ? restSec : Math.min(restSec, 20),
+        interEx: set === totalSets,
+      })
+    }
+  })
+
+  // Drop trailing rest
+  while (result.length && result[result.length - 1].type === 'rest') result.pop()
+  return result
+}
 
 export default function DeepScreen({ state }) {
-  const { mode, workout, setTab, goCool } = state
+  const { mode, workout, goCool, setTab } = state
   const isStr = mode === 'str'
 
-  // Flatten exercises from workout
-  const exList = workout
-    ? [...(workout.main || []), ...(workout.abs || [])].map(e => e.n)
-    : ['Rest']
+  const allExercises = useMemo(() => workout
+    ? [...(workout.main || []), ...(workout.abs || [])]
+    : [], [workout])
 
-  const workSec  = WORK_TIME[mode] || 45
-  const restSec  = REST_TIME[mode] || 20
-  const totalRds = exList.length
+  const intervals = useMemo(
+    () => buildIntervals(allExercises, isStr),
+    [allExercises, isStr]
+  )
 
-  const [phase,   setPhase]   = useState('work')
-  const [timeLeft, setTimeLeft] = useState(workSec)
-  const [exIdx,   setExIdx]   = useState(0)
-  const [running, setRunning] = useState(true)
-  const intervalRef = useRef(null)
+  // All timer state in a ref to avoid stale closures in setInterval
+  const t = useRef({
+    idx:       0,
+    timeLeft:  intervals[0]?.workSec ?? 40,
+    running:   true,
+    completed: {}, // { [key]: count }
+  })
+  const [, re] = useState(0)
+  const tick = () => re(n => n + 1)
 
-  const isWork = phase === 'work'
-  const isRest = phase === 'rest'
-  const isDone = phase === 'done'
-
-  const totalRound = isWork ? workSec : restSec
-  const pct = isDone ? 100 : Math.max(0, ((totalRound - timeLeft) / totalRound) * 100)
-
-  const exName   = exList[exIdx] || ''
-  const nextName = exList[exIdx + 1] || null
-
-  const advancePhase = useCallback(() => {
-    setPhase(prev => {
-      if (prev === 'work') {
-        setTimeLeft(restSec)
-        return 'rest'
-      }
-      // rest done — next exercise
-      const nextIdx = exIdx + 1
-      if (nextIdx >= exList.length) {
-        setRunning(false)
-        return 'done'
-      }
-      setExIdx(nextIdx)
-      setTimeLeft(workSec)
-      return 'work'
-    })
-  }, [exIdx, exList.length, workSec, restSec])
+  // Exit confirmation state
+  const [confirmExit, setConfirmExit] = useState(false)
 
   useEffect(() => {
-    if (running && !isDone) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) { advancePhase(); return 0 }
-          return prev - 1
-        })
-      }, 1000)
-    } else {
-      clearInterval(intervalRef.current)
-    }
-    return () => clearInterval(intervalRef.current)
-  }, [running, isDone, advancePhase])
+    const id = setInterval(() => {
+      const s = t.current
+      if (!s.running || s.idx >= intervals.length) return
 
-  function togglePause() { setRunning(r => !r) }
+      s.timeLeft -= 1
+      if (s.timeLeft > 0) { tick(); return }
+
+      const curr = intervals[s.idx]
+      // Count natural completions of work intervals
+      if (curr.type === 'work') {
+        s.completed[curr.key] = (s.completed[curr.key] || 0) + 1
+      }
+      s.idx += 1
+      if (s.idx < intervals.length) {
+        const next = intervals[s.idx]
+        s.timeLeft = next.type === 'work' ? next.workSec : next.restSec
+      } else {
+        s.timeLeft = 0
+      }
+      tick()
+    }, 1000)
+    return () => clearInterval(id)
+  }, [intervals])
+
+  function togglePause() { t.current.running = !t.current.running; tick() }
+
+  function skipInterval() {
+    const s = t.current
+    if (s.idx >= intervals.length) return
+    s.idx += 1
+    if (s.idx < intervals.length) {
+      const next = intervals[s.idx]
+      s.timeLeft = next.type === 'work' ? next.workSec : next.restSec
+    }
+    tick()
+  }
 
   function resetTimer() {
-    clearInterval(intervalRef.current)
-    setPhase('work')
-    setTimeLeft(workSec)
-    setExIdx(0)
-    setRunning(true)
+    t.current = { idx: 0, timeLeft: intervals[0]?.workSec ?? 40, running: true, completed: {} }
+    tick()
   }
 
-  function skipPhase() {
-    clearInterval(intervalRef.current)
-    advancePhase()
-  }
-
-  function handleClose() {
-    clearInterval(intervalRef.current)
-    setTab('tonight')
+  function buildCompletedSets() {
+    return allExercises.map(ex => {
+      const key       = ex.key || ex.n
+      const spec      = isStr ? ex.s : ex.d
+      const total     = parseSets(spec)
+      const completed = t.current.completed[key] || 0
+      return { key, name: ex.n, completed, total }
+    })
   }
 
   function handleDone() {
-    clearInterval(intervalRef.current)
-    goCool()
+    goCool(buildCompletedSets())
   }
 
-  const displayTime = isDone ? '✓' : String(timeLeft).padStart(2, '0')
+  function handleClose() {
+    if (!confirmExit) { setConfirmExit(true); setTimeout(() => setConfirmExit(false), 3000); return }
+    // Second tap — bail out without saving
+    setTab('tonight')
+  }
+
+  const s        = t.current
+  const isDone   = s.idx >= intervals.length
+  const curr     = intervals[s.idx]
+  const isWork   = curr?.type === 'work'
+  const isRest   = curr?.type === 'rest' || curr?.type === 'inter-rest'
+  const timeLeft = s.timeLeft
+
+  const totalWork    = intervals.filter(i => i.type === 'work').length
+  const doneWork     = Object.values(s.completed).reduce((a, b) => a + b, 0)
+  const pct          = isDone ? 100 : (doneWork / Math.max(totalWork, 1)) * 100
+
+  // Group intervals by exercise to show progress pips
+  const exerciseKeys = [...new Set(intervals.filter(i => i.type === 'work').map(i => i.key))]
+  const currExKey    = curr?.key
 
   return (
     <div className="sa-app" data-sa-mode={mode} style={{
@@ -99,39 +158,34 @@ export default function DeepScreen({ state }) {
       background: isRest ? 'var(--sa-bg-0)' : 'var(--sa-bg-1)',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Aura — faster during work */}
-      <div className="sa-aura" style={{
-        '--aura-duration-a': isWork ? '6s' : '14s',
-        opacity: isWork ? 1 : 0.6,
-      }} />
+      <div className="sa-aura" style={{ opacity: isWork ? 1 : 0.45 }} />
 
-      {/* Progress thread at top */}
+      {/* Top bar */}
       <div style={{ position: 'relative', padding: '14px 24px 0' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.05)' }}>
+        {/* Overall progress thread */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.05)' }}>
           <div style={{
             height: '100%', width: `${pct}%`,
             background: 'var(--sa-accent)',
             boxShadow: '0 0 12px var(--sa-accent-glow)',
-            transition: 'width 0.9s linear',
+            transition: 'width 1.2s var(--sa-settle)',
           }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span className="sa-tap" onClick={handleClose}>
-            <SaIcon name="close" size={20} color="var(--sa-ink-3)" />
+            {confirmExit
+              ? <span style={{ fontFamily: 'Newsreader, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--sa-str)' }}>Tap again to exit</span>
+              : <SaIcon name="close" size={20} color="var(--sa-ink-3)" />}
           </span>
           <span className="sa-tag">
-            <span className="dot" style={{
-              animation: isWork ? 'sa-breath 1.8s var(--sa-breathe) infinite' : 'none',
-            }} />
-            {isDone ? 'Complete' : isWork ? 'In the work' : 'Rest'}
+            <span className="dot" style={{ animation: isWork ? 'sa-breath 1.8s var(--sa-breathe) infinite' : 'none' }} />
+            {isDone ? 'Complete' : isWork ? 'In the work' : curr?.interEx ? 'Next exercise' : 'Rest'}
           </span>
-          <span className="sa-tap">
-            <SaIcon name="waves" size={20} color="var(--sa-ink-3)" />
-          </span>
+          <span style={{ width: 20 }} />
         </div>
       </div>
 
-      {/* Center — number + name */}
+      {/* Center */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
@@ -147,62 +201,88 @@ export default function DeepScreen({ state }) {
           animation: `sa-breath ${isWork ? '4s' : '8s'} var(--sa-breathe) infinite`,
         }} />
 
-        {/* Time number */}
+        {/* Timer number */}
         <div style={{
           fontFamily: 'Newsreader, serif',
-          fontWeight: 200, fontSize: 260,
+          fontWeight: 200, fontSize: 240,
           letterSpacing: '-0.05em', lineHeight: 0.85,
           color: 'var(--sa-ink-1)',
           fontVariantNumeric: 'tabular-nums',
           textShadow: '0 0 60px var(--sa-accent-glow)',
           position: 'relative',
         }}>
-          {displayTime}
+          {isDone ? '✓' : String(timeLeft).padStart(2, '0')}
         </div>
 
-        {/* Exercise name */}
+        {/* Exercise + set label */}
         <div className="sa-serif-it" style={{
           fontSize: 22, color: 'var(--sa-ink-2)',
           marginTop: 18, textAlign: 'center', position: 'relative',
         }}>
-          {isDone ? 'you can let go.' : exName.toLowerCase() + '.'}
+          {isDone ? 'you can let go.' : (curr?.name || '').toLowerCase() + '.'}
         </div>
 
-        {/* Next label during rest */}
-        {isRest && nextName && (
-          <div className="sa-label" style={{ fontSize: 10, marginTop: 28, color: 'var(--sa-ink-3)', position: 'relative' }}>
-            NEXT · {nextName.toUpperCase()}
+        {!isDone && curr && (
+          <div className="sa-label" style={{ fontSize: 10, marginTop: 10, color: 'var(--sa-ink-3)', position: 'relative' }}>
+            {isWork
+              ? `SET ${curr.setNum} OF ${curr.totalSets}`
+              : curr.interEx
+                ? (() => {
+                    const nextIdx = exerciseKeys.indexOf(curr.key) + 1
+                    const nextKey = exerciseKeys[nextIdx]
+                    const nextEx  = nextKey && allExercises.find(e => (e.key || e.n) === nextKey)
+                    return nextEx ? `NEXT · ${nextEx.n.toUpperCase()}` : 'FINISHING UP'
+                  })()
+                : `REST · SET ${curr.setNum + 1} OF ${curr.totalSets} UP NEXT`
+            }
           </div>
         )}
 
-        {/* Round count */}
-        {!isDone && (
-          <div className="sa-label" style={{ fontSize: 9, marginTop: 20, color: 'var(--sa-ink-4)', position: 'relative' }}>
-            {exIdx + 1} OF {totalRds}
+        {/* Reps hint during work */}
+        {isWork && curr && (
+          <div style={{ position: 'relative', marginTop: 8, padding: '8px 16px', background: 'var(--sa-bg-2)', borderRadius: 100, border: '1px solid var(--sa-rule)' }}>
+            <span className="sa-mono" style={{ fontSize: 11, color: 'var(--sa-ink-2)' }}>
+              {(isStr ? allExercises.find(e => (e.key || e.n) === curr.key)?.s : allExercises.find(e => (e.key || e.n) === curr.key)?.d) || ''}
+            </span>
           </div>
         )}
       </div>
 
-      {/* Round pips */}
+      {/* Exercise pips */}
       {!isDone && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '0 0 18px', position: 'relative' }}>
-          {Array.from({ length: Math.min(totalRds, 8) }).map((_, i) => (
-            <div key={i} style={{
-              width: 24, height: 3, borderRadius: 100,
-              background: i < exIdx + 1
-                ? 'var(--sa-accent)'
-                : 'rgba(255,255,255,0.08)',
-              boxShadow: i === exIdx ? '0 0 10px var(--sa-accent-glow)' : 'none',
-              transition: 'all 0.55s var(--sa-settle)',
-            }} />
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '0 28px 16px', flexWrap: 'wrap', position: 'relative' }}>
+          {exerciseKeys.slice(0, 10).map((key, i) => {
+            const done    = s.completed[key] > 0
+            const current = key === currExKey
+            const ex      = allExercises.find(e => (e.key || e.n) === key)
+            const total   = parseSets(isStr ? ex?.s : ex?.d)
+            const comp    = s.completed[key] || 0
+            return (
+              <div key={key} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                {Array.from({ length: total }).map((_, si) => (
+                  <div key={si} style={{
+                    width: current && si === comp ? 18 : 8,
+                    height: 4, borderRadius: 100,
+                    background: si < comp
+                      ? 'var(--sa-accent)'
+                      : current && si === comp
+                        ? 'var(--sa-accent)'
+                        : 'rgba(255,255,255,0.08)',
+                    opacity: si < comp ? 0.9 : current && si === comp ? 1 : 0.3,
+                    boxShadow: current && si === comp ? '0 0 8px var(--sa-accent-glow)' : 'none',
+                    transition: 'all 0.55s var(--sa-settle)',
+                  }} />
+                ))}
+              </div>
+            )
+          })}
         </div>
       )}
 
       {/* Controls */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-        padding: '12px 32px 40px', position: 'relative',
+        padding: '12px 32px 44px', position: 'relative',
       }}>
         <button className="sa-tap" onClick={resetTimer} style={{
           width: 52, height: 52, borderRadius: 100,
@@ -224,13 +304,13 @@ export default function DeepScreen({ state }) {
         }}>
           {isDone
             ? <SaIcon name="check" size={32} color="#14110e" />
-            : running
+            : t.current.running
               ? <SaIcon name="pause_lg" size={28} color="#14110e" />
               : <SaIcon name="play" size={28} color="#14110e" />
           }
         </button>
 
-        <button className="sa-tap" onClick={skipPhase} style={{
+        <button className="sa-tap" onClick={skipInterval} style={{
           width: 52, height: 52, borderRadius: 100,
           border: '1px solid var(--sa-rule-hi)',
           background: 'rgba(255,255,255,0.02)',

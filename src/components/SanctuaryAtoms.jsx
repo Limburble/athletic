@@ -85,15 +85,21 @@ export const SaTopBar = ({ mode = 'def', onMenu, right, pad = 16 }) => {
   )
 }
 
-// Bottom dock — three glyphs
+// Bottom dock — three glyphs — floats over scrollable content
 export const SaDock = ({ tab, onTab }) => {
   const items = [
     { id: 'tonight', label: 'Tonight', icon: 'moon'   },
-    { id: 'deep',    label: 'Deep',    icon: 'timer'  },
     { id: 'log',     label: 'Log',     icon: 'flower' },
+    { id: 'room',    label: 'Room',    icon: 'leaf'   },
   ]
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '14px 24px 18px' }}>
+    <div style={{
+      position: 'absolute', left: 0, right: 0, bottom: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '12px 24px 24px',
+      background: 'var(--sa-bg-0)',
+      zIndex: 4,
+    }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: 6,
         background: 'rgba(255,255,255,0.025)',
@@ -159,9 +165,15 @@ export const SaSwitch = ({ on, onChange }) => (
   </div>
 )
 
-// Floating dock wrapper — fades content behind it
+// Floating dock — solid black square at bottom, content scrolls behind
 export const SaFloatingDock = ({ children }) => (
-  <div className="sa-floating-dock">
+  <div style={{
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    padding: '20px 24px 28px',
+    background: 'var(--sa-bg-0)',
+    zIndex: 5,
+    borderTop: '1px solid var(--sa-rule)',
+  }}>
     {children}
   </div>
 )

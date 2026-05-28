@@ -1,14 +1,15 @@
 import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppState } from './hooks/useAppState'
-import TonightScreen  from './components/TonightScreen'
-import PathScreen     from './components/PathScreen'
-import ComposeScreen  from './components/ComposeScreen'
-import DeepScreen     from './components/DeepScreen'
-import CoolScreen     from './components/CoolScreen'
-import LogScreen      from './components/LogScreen'
-import RoomScreen     from './components/RoomScreen'
-import CheckinScreen  from './components/CheckinScreen'
+import TonightScreen    from './components/TonightScreen'
+import PathScreen       from './components/PathScreen'
+import ComposeScreen    from './components/ComposeScreen'
+import DeepScreen       from './components/DeepScreen'
+import CoolScreen       from './components/CoolScreen'
+import LogScreen        from './components/LogScreen'
+import RoomScreen       from './components/RoomScreen'
+import CheckinScreen    from './components/CheckinScreen'
+import OnboardingScreen from './components/OnboardingScreen'
 
 const fade = {
   initial: { opacity: 0 },
@@ -20,30 +21,31 @@ export default function App() {
   const state = useAppState()
   const { tab } = state
 
+  // First-run gate — only for brand-new users with no sessions
+  const showOnboarding = tab === 'tonight'
+    && !state.store.profile.onboarded
+    && state.store.stats.visits === 0
+
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      maxWidth: 430,
-      margin: '0 auto',
-    }}>
+    <div style={{ position: 'fixed', inset: 0, maxWidth: 430, margin: '0 auto' }}>
       <AnimatePresence mode="wait">
         <motion.div
-          key={tab}
+          key={showOnboarding ? 'onboarding' : tab}
           variants={fade}
           initial="initial"
           animate="animate"
           exit="exit"
           style={{ position: 'absolute', inset: 0 }}
         >
-          {tab === 'tonight'  && <TonightScreen  state={state} />}
-          {tab === 'checkin'  && <CheckinScreen  state={state} />}
-          {tab === 'path'     && <PathScreen     state={state} />}
-          {tab === 'compose'  && <ComposeScreen  state={state} />}
-          {tab === 'deep'     && <DeepScreen     state={state} />}
-          {tab === 'cool'     && <CoolScreen     state={state} />}
-          {tab === 'log'      && <LogScreen      state={state} />}
-          {tab === 'room'     && <RoomScreen     state={state} />}
+          {showOnboarding                     && <OnboardingScreen state={state} />}
+          {!showOnboarding && tab === 'tonight'  && <TonightScreen    state={state} />}
+          {tab === 'checkin'                     && <CheckinScreen    state={state} />}
+          {tab === 'path'                        && <PathScreen       state={state} />}
+          {tab === 'compose'                     && <ComposeScreen    state={state} />}
+          {tab === 'deep'                        && <DeepScreen       state={state} />}
+          {tab === 'cool'                        && <CoolScreen       state={state} />}
+          {tab === 'log'                         && <LogScreen        state={state} />}
+          {tab === 'room'                        && <RoomScreen       state={state} />}
         </motion.div>
       </AnimatePresence>
     </div>

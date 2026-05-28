@@ -137,13 +137,14 @@ export const HIIT_EXERCISES = [
   {id:'thruster',           n:'Dumbbell Thrusters',  work:35, rest:25, i:'Dumbbells at shoulders. Squat to parallel, drive up and press overhead in one movement.'},
 ]
 
-export function buildRoutine(groups, mode, slotIdx, absRotation = 0) {
+export function buildRoutine(groups, mode, slotIdx, absRotation = 0, banned = []) {
   const t = SLOTS[slotIdx].v
   const isStr = mode === 'str'
   const totalEx = (isStr ? STR_EX_COUNT : DEF_EX_COUNT)[slotIdx]
   const numGroups = Math.max(1, groups.length)
   const basePerGroup = Math.max(1, Math.floor(totalEx / numGroups))
   const remainder = totalEx - basePerGroup * numGroups
+  const bannedSet = new Set(banned)
 
   const warmup = [WARMUPS.base]
   if (t >= 30) warmup.push(WARMUPS.dynamic)
@@ -153,21 +154,24 @@ export function buildRoutine(groups, mode, slotIdx, absRotation = 0) {
   groups.forEach((g, gi) => {
     const defPool = DEF_POOL[g] || []
     const strPool = STR_POOL[g] || []
-    const count = Math.min(basePerGroup + (gi < remainder ? 1 : 0), defPool.length)
-    for (let i = 0; i < count; i++) {
+    const target = basePerGroup + (gi < remainder ? 1 : 0)
+    let added = 0
+    for (let i = 0; i < defPool.length && added < target; i++) {
       const defEntry = defPool[i]
       const strEntry = strPool[i] || defPool[i]
       if (!defEntry) continue
       const [key, dSets, dReps, dRest] = defEntry
       const [, sSets, sReps, sRest] = strEntry
+      if (bannedSet.has(key)) continue
       const base = EX[key]
       if (!base || main.find(e => e.key === key)) continue
       main.push({ ...base, key, d: `${dSets} × ${dReps} (${dRest})`, s: `${sSets} × ${sReps} (${sRest})` })
+      added++
     }
   })
 
   const session = ABS_SESSIONS[(slotIdx + absRotation) % ABS_SESSIONS.length]
-  const abs = session.exercises.map(e => ({ ...EX[e.key], role: e.role, sessionLabel: session.label }))
+  const abs = session.exercises.map(e => ({ ...EX[e.key], key: e.key, role: e.role, sessionLabel: session.label }))
 
   const noteBank = isStr ? NOTES_STR : NOTES_DEF
   const noteStart = slotIdx % (noteBank.length - 1)
