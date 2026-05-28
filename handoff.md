@@ -1,10 +1,10 @@
 # goal
 
-Build Athletic Sanctuary — a warm, Newsreader-typeset, mobile-first workout app (430px max-width) that feels like a private room rather than a fitness tracker. The design language is editorial minimalism: near-black `#14110e`, parchment accents, breathing aura orbs, film grain, and a full CSS token system that switches between Definition (gold) and Strength (amber) modes. The app should accumulate real data over time — check-ins, session logs, streaks — so it genuinely knows the user.
+Build Athletic Sanctuary — a warm, Newsreader-typeset, mobile-first workout app (430px max-width) that feels like a private room rather than a fitness tracker. The design language is editorial minimalism: near-black `#14110e`, parchment accents, breathing aura orbs, film grain, and a full CSS token system that switches between Definition (gold) and Strength (amber) modes. The app accumulates real data over time — check-ins, session logs, streaks — so it genuinely knows the user.
 
 ---
 
-# current state (v3 — production-ready)
+# current state (v4 — production-ready)
 
 **Build:** clean. Zero console errors. `npm run dev` → `http://localhost:5173`.
 
@@ -16,16 +16,16 @@ Build Athletic Sanctuary — a warm, Newsreader-typeset, mobile-first workout ap
 
 | Screen | Status | Notes |
 |---|---|---|
-| OnboardingScreen | ✅ working | 3-step: welcome → name+gym+body stats → mode. Height and weight collected in step 1 as optional fields. Sets `profile.onboarded = true`. |
-| TonightScreen | ✅ working | 3 smart suggestions: primary (least-trained groups, checkin-adjusted), short reset (single group, low effort), strength evening (compound groups, 75 min, str mode). Each tagged SUGGESTED. "Start from scratch" → PathScreen. |
-| CheckinScreen | ✅ working | Mandatory before every workout (no skip). On save → ConfirmScreen. Back → TonightScreen. |
-| ConfirmScreen | ✅ working | Brief pre-workout summary: groups, duration, effort, mode. "Let's go" compiles routine and enters ComposeScreen. Back → TonightScreen. |
-| PathScreen | ✅ working | Custom compiler — time dial, muscle pills, mode cards. Reached via "Start from scratch". |
-| ComposeScreen | ✅ working | Phased itinerary (warmup / main / core); SLOTS-correct finish time; coaching note. Back goes to PathScreen (from scratch) or TonightScreen (from suggestion). |
-| DeepScreen | ✅ working | Set ticker (no countdown during work). Per-set checkmark button, rest timer between sets, "set X of Y up next" / "next · exercise" labels. Rest time 30% shorter for single-muscle workouts. Exercise-level progress dots. |
-| CoolScreen | ✅ working | Arrive (breathing rings) → Reflect (per-exercise sets breakdown) → Close (week dots, mood picker, note). Saves full session on step-out. |
-| LogScreen | ✅ working | Real sessions, expandable accordion rows, inline mood+note editor, Save + Delete (double-tap confirm). 6-week dot grid, 4-week stats panel. |
-| RoomScreen | ✅ working | Inline profile editing (name, lastName, gym). Boundaries: full exercise list, alias-aware banning. Live stats. All prefs persist. |
+| OnboardingScreen | ✅ working | 3-step: welcome → name+gym+body stats → mode. Sets `profile.onboarded = true`. |
+| TonightScreen | ✅ working | 3 smart suggestions + streak-at-risk banner. "Start from scratch" seeds PathScreen with suggested groups. |
+| CheckinScreen | ✅ working | Mandatory before every workout. Saves once per ISO week. On save → ConfirmScreen. |
+| ConfirmScreen | ✅ working | Pre-workout summary: groups, duration, effort, mode. "Let's go" → ComposeScreen. |
+| PathScreen | ✅ working | Custom compiler — time dial, muscle pills, mode cards. Pre-seeded when coming from "Start from scratch". |
+| ComposeScreen | ✅ working | Phased itinerary (warmup / main / core). All exercise rows have expandable (i) info panels with science-backed form cues. |
+| DeepScreen | ✅ working | Left-aligned editorial layout. Set tracker (no countdown during work). Bare "i form cue" link expands inline. Square set markers (no ovals). Rest timer between sets. |
+| CoolScreen | ✅ working | Arrive → Reflect → Close. Saves full session. |
+| LogScreen | ✅ working | Real sessions, expandable rows, repeat-session button, checkin trends panel (sleep/energy bars). |
+| RoomScreen | ✅ working | Inline profile editing, exercise banning, live stats. |
 
 ---
 
@@ -40,73 +40,123 @@ DeepScreen → markSetDone() → rest timer → next set/exercise
 DeepScreen → goCool(completedSets) → CoolScreen (arrive → reflect → close)
 CoolClose → store.saveSession(...) → reset() → TonightScreen
 
-TonightScreen → "Start from scratch" → PathScreen → ComposeScreen (same from there)
+TonightScreen → "Start from scratch" → PathScreen (seeded with suggested groups) → ComposeScreen
+LogScreen → "Repeat this session" → beginWorkout(session config) → same flow
 ```
 
 ---
 
 ## suggestion algorithm (`TonightScreen.jsx`)
 
-Three suggestions generated on every render from `buildSuggestions(store)`:
+Three suggestions from `buildSuggestions(store)` on every render:
 
-**Primary** — Reads last 8 sessions for least-trained muscle group pairs. Adjusts for checkin:
+**Primary** — Reads last 8 sessions for least-trained muscle pairs. Adjusts for checkin:
 - Aches (`shoulders/lowback/midback/knees/hips`) → skips those groups
 - `arrived: tired/wrecked` or `sleep ≤ 1` → reduces slot by 1, effort drops to 'moderate'
+- `sessions.length === 0` → defaults to chest + back
 
-**Short Reset** — Single least-trained group, 30 min (15 if tired), def mode, low effort.
+**Short Reset** — Single least-trained group, 15–30 min, def mode, low effort.
 
-**Strength Evening** — Two least-trained compound groups (legs/chest/back/shoulders), 75 min, str mode, heavy. Also avoids aching groups.
+**Strength Evening** — Two least-trained compound groups (legs/chest/back/shoulders), 75 min, str mode, heavy.
 
 ---
 
-## DeepScreen set ticker (`src/components/DeepScreen.jsx`)
+## DeepScreen layout (`src/components/DeepScreen.jsx`)
 
-Replaced timer-based work intervals with a tap-to-complete set tracker:
+Editorial work view — left-aligned, no pill chrome, no centered stack:
 
-- **Work phase**: exercise name, set pips, SET X OF Y, reps + rest time pill, checkmark button
-- **Rest phase**: countdown timer, "set X of Y up next" or "next · exercise name", Pause + Skip rest
-- **Done phase**: ✓ symbol, "Cool down →" button
-- Rest time = `parseRestSec(spec) × restFactor` where `restFactor = 0.7` for single-group, `1.0` for multi-group
-- All state in a single `useRef`; rest interval only active during rest phase; renders via `useState(0)` tick
+- **EXERCISE N OF M** — small mono label, top left
+- **exercise name.** — large italic serif, left-aligned (34px)
+- **i form cue** — bare italic text link (no pill, no border). Tap to expand inline form instructions between top/bottom rules. Color transitions to accent when open.
+- **Sa-rule separator**
+- **Set N of M** — serif text left; square set markers (8×8, borderRadius: 2) right. Active marker glows, completed markers dim. No scaleX stretching.
+- **N reps · Xs rest** — bare mono text, no background pill
+- **Checkmark button** — 88px circle, centered in remaining flex space. Fires `sa-set-pop` animation on tap.
+- **skip set** — bare italic below checkmark
+
+**Rest phase**: full-screen countdown in 180px serif, italic "set X of Y up next" or "next · exercise", Pause + Skip rest.
+
+**Done phase**: oversized ✓, "you can let go.", "Cool down →".
+
+Rest time = `parseRestSec(spec) × restFactor` where `restFactor = 0.7` for single-group, `1.0` for multi-group.
+
+---
+
+## form cues (`src/data/exercises.js`)
+
+Every exercise and warmup item has an `i` field with science-backed form instructions. Exposed via expandable (i) panels in:
+
+- **ComposeScreen** — circular `i` button on each itinerary row. Turns gold when open. AnimatePresence slide-in panel.
+- **DeepScreen** — bare "i form cue" link below exercise name. Expands inline with editorial rule borders.
+
+---
+
+## polish/animation system (`src/index.css`)
+
+Key additions over baseline:
+
+```css
+/* Easing */
+--sa-settle: cubic-bezier(0.16, 1, 0.3, 1)   /* expo ease-out, all transitions */
+--sa-breathe: cubic-bezier(0.45, 0, 0.55, 1)  /* breathing animations */
+
+/* Keyframes */
+sa-fade-up      — entrance (0.65s, was 1.2s)
+sa-set-pop      — checkmark tap: scale dip → spring back with glow
+sa-glow-pulse   — box-shadow pulse
+sa-streak-pulse — dot breathing for streak-at-risk banner
+
+/* Classes */
+.sa-streak-dot  — 2.4s pulse animation on streak danger dot
+.sa-enter       — 0.65s fade-up entrance (faster than original)
+
+/* Hover/focus */
+.sa-tap:hover         opacity 0.82
+.sa-cta:hover         glow box-shadow
+:focus-visible        1.5px accent outline
+
+/* Accessibility */
+@media (prefers-reduced-motion) — disables all animations/transitions
+```
+
+Progress bars and set pips all use `transform: scaleX()` + `transformOrigin: left` instead of animating `width`, avoiding layout thrash.
 
 ---
 
 ## persistence (`src/data/store.js`)
 
 - `localStorage` key: `sa-store-v1`
-- Stored: `profile`, `prefs`, `checkins` (one per ISO week, overwritten on each checkin), `sessions`
+- Stored: `profile`, `prefs`, `checkins` (one per ISO week), `sessions`
 - `profile.onboarded` — onboarding gate
 - `profile.banned` — exercise keys excluded from all generated routines
-- `profile.weight/heightFt/heightIn` — set in onboarding, updated via checkin
 - Derived: `streak`, `daysIn`, `visits`, `lastVisitDaysAgo`, `recentHours`, `recentAvgMood`, `thisWeekCheckin`
 
 ---
 
 ## key architecture decisions
 
-**Workout flow state** — `useAppState` holds `pendingConfig` (groups, mode, slotIdx, minutes, effort, body) and `workoutSource` ('path' | 'confirm'). `beginWorkout(config)` always routes to checkin. `confirmWorkout()` calls `compile(pendingConfig)` and enters compose.
+**Workout flow state** — `useAppState` holds `pendingConfig`, `workoutSource` ('path' | 'confirm'), and `pathSeedGroups`. `beginWorkout(config)` always routes through checkin. `goPath(seedGroups)` seeds PathScreen groups before switching tab.
 
-**DeepScreen set tracker** — All timer state in a single `useRef`. `setInterval` only ticks during rest phase. Re-renders via `useState(0)` counter.
+**DeepScreen state** — All timer state in a single `useRef`. `setInterval` only ticks during rest phase. Re-renders via `useState(0)` counter. `showInfo` resets to `false` on exercise advance.
 
-**Banned exercises** — `buildRoutine` accepts a `banned` array. `toggleBan` uses `NAME_TO_KEYS` for alias awareness.
+**Banned exercises** — `buildRoutine` accepts `banned` array. `toggleBan` uses `NAME_TO_KEYS` for alias awareness.
 
-**Dock overlays** — `SaDock` and `SaFloatingDock` use `linear-gradient(transparent → var(--sa-bg-0))` with extra top padding so content scrolls infinitely underneath.
+**Dock overlays** — `SaDock` / `SaFloatingDock` use `linear-gradient(transparent → var(--sa-bg-0))` so content scrolls underneath.
 
 ---
 
-## files changed (v3 session)
+## files changed (v4 session)
 
 ```
-src/hooks/useAppState.js            — pendingConfig, workoutSource, beginWorkout(), confirmWorkout()
-src/components/TonightScreen.jsx    — full redesign: 3 smart suggestions, "Start from scratch"
-src/components/CheckinScreen.jsx    — mandatory; save → 'confirm'; back → tonight
-src/components/ConfirmScreen.jsx    — NEW: pre-workout summary screen
-src/components/DeepScreen.jsx       — full rewrite: set ticker + rest timer
-src/components/ComposeScreen.jsx    — back button respects workoutSource
-src/components/OnboardingScreen.jsx — height + weight fields in step 1
-src/components/RoomScreen.jsx       — removed placeholder notification quiet row
-src/components/SanctuaryAtoms.jsx   — gradient backgrounds on SaDock + SaFloatingDock
-src/App.jsx                         — added 'confirm' tab route
+src/hooks/useAppState.js            — pathSeedGroups state, goPath(seedGroups), reset cleanup
+src/components/TonightScreen.jsx    — streak-at-risk banner, goPath(primary.groups) for scratch
+src/components/PathScreen.jsx       — reads pathSeedGroups as initial groups state
+src/components/ComposeScreen.jsx    — SaItineraryRow with (i) expand via AnimatePresence
+src/components/DeepScreen.jsx       — full layout redesign: left-aligned, no ovals, square markers, bare form cue
+src/components/LogScreen.jsx        — repeat session button, checkin trends panel with scaleX sleep bars
+src/index.css                       — sa-set-pop, sa-streak-pulse, sa-glow-pulse, hover states, focus-visible, reduced-motion
+PRODUCT.md                          — created: brand/product context for design system
+DESIGN.md                           — created: full token, typography, and motion documentation
 ```
 
 ---
@@ -125,7 +175,8 @@ git push origin main
 
 Nothing is blocking. Potential future improvements:
 
-- **Repeat session** — tapping a past log entry could pre-load its exercises for a repeat
-- **Streak notifications** — push reminder when streak is at risk
-- **Checkin trends** — sleep/energy over time in LogScreen stats panel
-- **Pre-populate compiler** — "Start from scratch" could seed PathScreen with the suggested groups
+- **Push notifications** — native reminder when streak is at risk (requires PWA manifest + service worker)
+- **Weight progression tracking** — log actual weight lifted per set in DeepScreen, surface trends in LogScreen
+- **Rest timer customization** — allow per-exercise rest overrides in RoomScreen
+- **Workout history replay** — tap any past session in LogScreen to view its full itinerary
+- **Export** — CSV or PDF of session history
