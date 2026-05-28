@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { SaIcon, SaStat, SaSwitch, SaDock } from './SanctuaryAtoms'
 import { DEF_POOL, STR_POOL, EX } from '../data/exercises'
+import { exportData, importData } from '../data/store'
 
 // All unique exercise keys across both pools
 const _ALL_KEYS = [...new Set([
@@ -67,6 +68,8 @@ export default function RoomScreen({ state }) {
   const [editLast,     setEditLast]       = useState(profile.lastName)
   const [editGym,      setEditGym]        = useState(profile.gym)
   const [boundariesOpen, setBoundariesOpen] = useState(false)
+  const [importMsg, setImportMsg] = useState(null)
+  const fileRef = useRef()
 
   const banned = profile.banned || []
 
@@ -235,6 +238,35 @@ export default function RoomScreen({ state }) {
             chev
             last
             onClick={() => setBoundariesOpen(true)}
+          />
+        </RoomSection>
+
+        {/* Data backup */}
+        <RoomSection title="Your Data" delay={0.3}>
+          <RoomRow label="Export backup" sub="Download your history as a JSON file." last={false}>
+            <span className="sa-tap" onClick={exportData}>
+              <SaIcon name="drop" size={18} color="var(--sa-ink-2)" />
+            </span>
+          </RoomRow>
+          <RoomRow label="Import backup" sub={importMsg || 'Restore from a previous export.'} last>
+            <span className="sa-tap" onClick={() => fileRef.current?.click()}>
+              <SaIcon name="plus" size={18} color="var(--sa-ink-2)" />
+            </span>
+          </RoomRow>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              importData(
+                file,
+                () => { setImportMsg('Restored. Reload to apply.'); e.target.value = '' },
+                (msg) => { setImportMsg(msg); e.target.value = '' },
+              )
+            }}
           />
         </RoomSection>
 

@@ -129,6 +129,32 @@ function persist(store) {
   } catch { /* quota / SSR */ }
 }
 
+// ── Backup utilities ──────────────────────────────────────────────────────────
+
+export function exportData() {
+  const raw = localStorage.getItem(STORE_KEY) || '{}'
+  const blob = new Blob([raw], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'athletic-backup.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function importData(file, onSuccess, onError) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result)
+      if (!parsed.sessions && !parsed.profile) throw new Error('Unrecognized format')
+      localStorage.setItem(STORE_KEY, JSON.stringify(parsed))
+      onSuccess()
+    } catch { onError('Could not read backup file.') }
+  }
+  reader.readAsText(file)
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useSanctuaryStore() {
