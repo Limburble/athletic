@@ -14,8 +14,9 @@ export function useAppState() {
   const [coolStep,      setCoolStep]     = useState('arrive')
   const [sessionStart,  setSessionStart] = useState(null)
   const [completedSets, setCompletedSets] = useState(null)
-  const [pendingConfig, setPendingConfig] = useState(null)
-  const [workoutSource, setWorkoutSource] = useState('path')
+  const [pendingConfig,   setPendingConfig]   = useState(null)
+  const [workoutSource,   setWorkoutSource]   = useState('path')
+  const [pathSeedGroups,  setPathSeedGroups]  = useState([])
   const absRotation = useRef(0)
 
   function setMode(m) {
@@ -53,6 +54,7 @@ export function useAppState() {
     setSessionStart(null)
     setCompletedSets(null)
     setPendingConfig(null)
+    setPathSeedGroups([])
   }
 
   function goCool(csData = null) {
@@ -80,8 +82,9 @@ export function useAppState() {
     setTab('compose')
   }
 
-  // Manual path — go straight to the custom compiler
-  function goPath() {
+  // Manual path — go straight to the custom compiler; seedGroups pre-selects muscles
+  function goPath(seedGroups = []) {
+    setPathSeedGroups(seedGroups)
     setWorkoutSource('path')
     setTab('path')
   }
@@ -102,6 +105,7 @@ export function useAppState() {
     confirmWorkout,
     pendingConfig,
     workoutSource,
+    pathSeedGroups,
     coolStep, setCoolStep,
     sessionStart,
     completedSets,

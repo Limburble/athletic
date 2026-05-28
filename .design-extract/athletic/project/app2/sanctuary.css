@@ -1,0 +1,324 @@
+/* ─────── Athletic — The Sanctuary ─────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,200;1,6..72,300;1,6..72,400;1,6..72,500;1,6..72,600&family=Geist:wght@200;300;400;500;600&family=Geist+Mono:wght@300;400&display=swap');
+
+:root {
+  /* Dusk (default) — warm near-black + parchment ink + lamplight glow */
+  --sa-bg-0:     #14110e;
+  --sa-bg-1:     #1c1814;
+  --sa-bg-2:     #25201a;
+  --sa-bg-3:     #2e2820;
+  --sa-bg-elev:  #1a1612;
+  --sa-ink-1:    #ece4d0;
+  --sa-ink-2:    #b4ab94;
+  --sa-ink-3:    #756d5d;
+  --sa-ink-4:    #4b443a;
+  --sa-rule:     rgba(236, 228, 208, 0.07);
+  --sa-rule-hi:  rgba(236, 228, 208, 0.16);
+
+  /* Mode glow — the lamplight in the room */
+  --sa-def:      #9eb287;
+  --sa-def-glow: rgba(158, 178, 135, 0.22);
+  --sa-def-aura: rgba(158, 178, 135, 0.08);
+
+  --sa-str:      #e0b67c;
+  --sa-str-glow: rgba(224, 182, 124, 0.22);
+  --sa-str-aura: rgba(224, 182, 124, 0.08);
+
+  /* Cool — restoration tone */
+  --sa-cool:     #8aa9c4;
+  --sa-cool-glow:rgba(138, 169, 196, 0.22);
+
+  --sa-accent:      var(--sa-def);
+  --sa-accent-glow: var(--sa-def-glow);
+  --sa-accent-aura: var(--sa-def-aura);
+
+  /* Easing — slow, settling */
+  --sa-settle:  cubic-bezier(0.16, 1, 0.3, 1);
+  --sa-breathe: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+[data-sa-mode='str'] {
+  --sa-accent:      var(--sa-str);
+  --sa-accent-glow: var(--sa-str-glow);
+  --sa-accent-aura: var(--sa-str-aura);
+}
+
+[data-sa-mode='cool'] {
+  --sa-accent:      var(--sa-cool);
+  --sa-accent-glow: var(--sa-cool-glow);
+  --sa-accent-aura: rgba(138, 169, 196, 0.08);
+}
+
+/* Morning — warm cream — quieter, daytime */
+[data-sa-light='true'] {
+  --sa-bg-0:     #f0ebe1;
+  --sa-bg-1:     #ebe5d7;
+  --sa-bg-2:     #e3dcc9;
+  --sa-bg-3:     #d8d0bb;
+  --sa-bg-elev:  #f6f1e7;
+  --sa-ink-1:    #1f1b15;
+  --sa-ink-2:    #6c6253;
+  --sa-ink-3:    #9a907d;
+  --sa-ink-4:    #b8af9c;
+  --sa-rule:     rgba(31, 27, 21, 0.07);
+  --sa-rule-hi:  rgba(31, 27, 21, 0.16);
+  --sa-def:      #5e7a48;
+  --sa-def-glow: rgba(94, 122, 72, 0.22);
+  --sa-def-aura: rgba(94, 122, 72, 0.10);
+  --sa-str:      #a06e34;
+  --sa-str-glow: rgba(160, 110, 52, 0.22);
+  --sa-str-aura: rgba(160, 110, 52, 0.10);
+  --sa-cool:     #4b6f8c;
+  --sa-cool-glow:rgba(75, 111, 140, 0.22);
+}
+
+/* Reset (scoped) */
+.sa-app, .sa-app *, .sa-app *::before, .sa-app *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0; padding: 0;
+}
+
+.sa-app {
+  width: 100%; height: 100%;
+  background: var(--sa-bg-0);
+  color: var(--sa-ink-1);
+  font-family: 'Geist', -apple-system, system-ui, sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow: hidden;
+  transition: background 1.2s var(--sa-settle), color 0.9s var(--sa-settle);
+}
+
+/* Ambient breathing aura — the room's atmosphere */
+.sa-aura {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.sa-aura::before, .sa-aura::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform, opacity;
+}
+.sa-aura::before {
+  top: -20%; left: -10%;
+  width: 90%; height: 80%;
+  background: var(--sa-accent-aura);
+  animation: sa-breathe-a 14s var(--sa-breathe) infinite alternate;
+}
+.sa-aura::after {
+  bottom: -20%; right: -20%;
+  width: 80%; height: 80%;
+  background: var(--sa-accent-aura);
+  opacity: 0.7;
+  animation: sa-breathe-b 18s var(--sa-breathe) infinite alternate;
+}
+
+@keyframes sa-breathe-a {
+  from { transform: translate(0, 0) scale(1);     opacity: 0.7; }
+  to   { transform: translate(8%, 6%) scale(1.15); opacity: 1;   }
+}
+@keyframes sa-breathe-b {
+  from { transform: translate(0, 0)     scale(1.05); opacity: 0.8; }
+  to   { transform: translate(-6%, -4%) scale(1);    opacity: 0.5; }
+}
+
+/* Subtle film grain for warmth */
+.sa-app::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.88 0 0 0 0 0.7 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 1;
+}
+[data-sa-light='true'].sa-app::after {
+  mix-blend-mode: multiply;
+}
+
+.sa-app > * { position: relative; z-index: 2; }
+
+/* Scrollbars */
+.sa-app *::-webkit-scrollbar { display: none; }
+.sa-app *                    { scrollbar-width: none; }
+
+/* ── Typography voices ── */
+.sa-serif {
+  font-family: 'Newsreader', Georgia, serif;
+  font-variation-settings: 'opsz' 72;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.sa-serif-it {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+}
+.sa-mono {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-variation-settings: 'tnum';
+  letter-spacing: 0;
+}
+.sa-label {
+  font-family: 'Geist', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sa-ink-2);
+}
+
+/* ── Atoms ── */
+.sa-tap {
+  cursor: pointer;
+  transition: opacity 0.5s var(--sa-settle);
+  user-select: none;
+}
+.sa-tap:active { opacity: 0.6; }
+
+/* Soft elevated surface — like silk over light */
+.sa-panel {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 50%),
+    var(--sa-bg-elev);
+  border: 1px solid var(--sa-rule);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 1px 0 rgba(0,0,0,0.4),
+    0 20px 60px rgba(0,0,0,0.35);
+  transition: all 0.8s var(--sa-settle);
+}
+[data-sa-light='true'] .sa-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 1px 2px rgba(31, 27, 21, 0.05),
+    0 20px 60px rgba(31, 27, 21, 0.06);
+}
+
+/* Soft pill button — luxury automotive */
+.sa-pill {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 16px 24px;
+  background: var(--sa-bg-2);
+  color: var(--sa-ink-1);
+  border: 1px solid var(--sa-rule);
+  border-radius: 100px;
+  font-family: 'Geist', sans-serif;
+  font-size: 15px; font-weight: 400;
+  cursor: pointer;
+  transition: all 0.55s var(--sa-settle);
+  letter-spacing: -0.005em;
+}
+.sa-pill:hover, .sa-pill.on {
+  background: var(--sa-bg-3);
+  border-color: var(--sa-rule-hi);
+}
+.sa-pill:active { transform: scale(0.985); }
+
+/* Primary CTA — feels like a velvet rope */
+.sa-cta {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  padding: 20px 24px;
+  background: var(--sa-accent);
+  color: #14110e;
+  border: none;
+  border-radius: 100px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.6s var(--sa-settle);
+  box-shadow: 0 8px 32px var(--sa-accent-glow),
+              inset 0 1px 0 rgba(255,255,255,0.25);
+  position: relative;
+  overflow: hidden;
+}
+.sa-cta:active { transform: scale(0.985); }
+.sa-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+.sa-cta .arrow { transition: transform 0.55s var(--sa-settle); margin-left: 4px; }
+.sa-cta:hover .arrow { transform: translateX(4px); }
+
+/* Ghost CTA */
+.sa-ghost {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%;
+  padding: 18px 24px;
+  background: transparent;
+  color: var(--sa-ink-1);
+  border: 1px solid var(--sa-rule-hi);
+  border-radius: 100px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.55s var(--sa-settle);
+}
+.sa-ghost:hover { border-color: var(--sa-ink-2); background: rgba(255,255,255,0.02); }
+.sa-ghost:active { transform: scale(0.985); }
+
+/* Tag — soft, no harsh edges */
+.sa-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Geist', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sa-ink-2);
+}
+.sa-tag .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sa-accent);
+  box-shadow: 0 0 12px var(--sa-accent-glow);
+}
+
+/* Soft animations */
+@keyframes sa-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.sa-enter { animation: sa-fade-up 1.2s var(--sa-settle) both; }
+
+@keyframes sa-breath {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1;    }
+}
+.sa-breathing { animation: sa-breath 4s var(--sa-breathe) infinite; }
+
+@keyframes sa-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--sa-accent-glow); }
+  50%      { box-shadow: 0 0 0 24px transparent; }
+}
+
+/* Divider — a held breath, not a line */
+.sa-rule {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--sa-rule-hi) 50%,
+    transparent 100%);
+}
+
+/* Time picker dial */
+.sa-dial {
+  position: relative;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 25%, black 75%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 25%, black 75%, transparent);
+}

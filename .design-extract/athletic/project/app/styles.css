@@ -1,0 +1,226 @@
+/* ───────── Athletic redesign — Field Notes ───────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,500;1,9..144,600;1,9..144,700&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Surfaces — light (paper) */
+  --paper:       #f1ece0;
+  --paper-2:     #ebe5d4;
+  --card:        #faf6ea;
+  --ink-1:       #14130e;
+  --ink-2:       #5c594d;
+  --ink-3:       #8c887a;
+  --rule:        #d4cdb9;
+  --rule-strong: #b8b09a;
+
+  /* Modes */
+  --def:         #3d6b34;
+  --def-hi:      #5a8f50;
+  --str:         #9c5311;
+  --str-hi:      #c97824;
+
+  /* Active accent (changes with mode) */
+  --accent:      var(--def);
+  --accent-hi:   var(--def-hi);
+
+  /* Timing */
+  --ease:        cubic-bezier(.4,0,.2,1);
+  --spring:      cubic-bezier(.34,1.56,.64,1);
+}
+
+[data-mode='str'] {
+  --accent:    var(--str);
+  --accent-hi: var(--str-hi);
+}
+
+[data-dark='true'] {
+  --paper:       #0e100c;
+  --paper-2:     #15171a;
+  --card:        #15171a;
+  --ink-1:       #ece6d4;
+  --ink-2:       #8a8676;
+  --ink-3:       #5b5849;
+  --rule:        #2a2c2a;
+  --rule-strong: #3c3d36;
+  --def-hi:      #7ab26a;
+  --str-hi:      #e09a45;
+}
+
+/* ── Reset (scoped) ── */
+.fn-app, .fn-app *, .fn-app *::before, .fn-app *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.fn-app {
+  width: 100%;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink-1);
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.55s var(--ease), color 0.55s var(--ease);
+}
+
+/* Type voices */
+.t-serif {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  line-height: 0.92;
+}
+.t-serif-it {
+  font-family: 'Fraunces', Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+}
+.t-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-feature-settings: 'tnum', 'zero';
+  letter-spacing: -0.02em;
+}
+.t-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+/* Atoms */
+.rule         { height: 1px; background: var(--rule); }
+.rule-strong  { height: 1px; background: var(--rule-strong); }
+.rule-double  { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); height: 4px; }
+
+/* Paper texture — very subtle */
+.fn-app::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 1;
+  mix-blend-mode: multiply;
+  z-index: 1;
+}
+[data-dark='true'].fn-app::before {
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.fn-app > * { position: relative; z-index: 2; }
+
+/* Scrollbar hide */
+.fn-app *::-webkit-scrollbar { display: none; }
+.fn-app *                    { scrollbar-width: none; }
+
+/* Common interactive */
+.tap { cursor: pointer; transition: opacity .2s var(--ease); user-select: none; }
+.tap:active { opacity: .55; }
+
+/* Chip */
+.fn-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 7px 13px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-2);
+  background: transparent;
+  cursor: pointer;
+  transition: all .2s var(--ease);
+  letter-spacing: -0.005em;
+}
+.fn-chip.on {
+  border-color: var(--ink-1);
+  color: var(--ink-1);
+  background: var(--ink-1);
+  color: var(--paper);
+}
+[data-dark='true'] .fn-chip.on {
+  background: var(--ink-1);
+  color: var(--paper);
+}
+
+/* Primary CTA */
+.fn-cta {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  padding: 22px 22px;
+  background: var(--ink-1);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: opacity .2s, transform .2s var(--spring);
+}
+.fn-cta:active { transform: scale(.985); }
+.fn-cta:disabled { opacity: .25; cursor: not-allowed; }
+.fn-cta.accent { background: var(--accent); }
+
+/* Step card */
+.fn-step {
+  border: 1px solid var(--rule);
+  background: var(--card);
+  border-radius: 2px;
+  overflow: hidden;
+  transition: all .35s var(--ease);
+}
+.fn-step.active   { border-color: var(--ink-1); }
+.fn-step.done     { opacity: .65; }
+.fn-step.locked   { opacity: .35; pointer-events: none; }
+
+/* Section heads */
+.fn-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 16px;
+}
+
+/* Big serial number — "exhibit number" style */
+.fn-serial {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--ink-2);
+}
+
+/* mode bracketed tag */
+.fn-mode-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--accent-hi);
+  white-space: nowrap;
+}
+
+/* Animations */
+@keyframes fn-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fn-fade { animation: fn-fade-up .45s var(--ease) both; }
+
+@keyframes fn-pulse {
+  0%,100% { opacity: 1; }
+  50%     { opacity: .4; }
+}
+.fn-pulse { animation: fn-pulse 1.6s var(--ease) infinite; }
+
+@keyframes fn-tick {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}

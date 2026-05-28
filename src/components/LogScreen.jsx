@@ -5,7 +5,7 @@ import { dayKey, weekMonday } from '../data/store'
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '' }
 
 export default function LogScreen({ state }) {
-  const { mode, setTab, store } = state
+  const { mode, setTab, store, beginWorkout } = state
   const { sessions, stats } = store
 
   const [expandedId,   setExpandedId]   = useState(null)
@@ -88,6 +88,57 @@ export default function LogScreen({ state }) {
             <SaStat k="AVG MOOD" v={stats.recentAvgMood ? capitalize(stats.recentAvgMood) : '—'} light />
           </div>
         </div>
+
+        {/* Checkin trends */}
+        {store.checkins.length > 0 && (() => {
+          const sleepLabels = ['Rough', 'Restless', 'Okay', 'Solid', 'Deep']
+          const arrivedColor = { rested: 'var(--sa-cool)', even: 'var(--sa-ink-2)', tired: 'var(--sa-str)', wrecked: 'var(--sa-str)' }
+          const sorted = [...store.checkins].sort((a, b) => b.weekKey.localeCompare(a.weekKey)).slice(0, 6)
+          return (
+            <div className="sa-panel sa-enter" style={{ padding: '24px 18px', marginBottom: 24, animationDelay: '0.15s' }}>
+              <div className="sa-label" style={{ fontSize: 9, textAlign: 'center', marginBottom: 16 }}>CHECK-IN TRENDS</div>
+              {sorted.map((c, i) => {
+                const d = new Date(c.date)
+                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()
+                const sleepVal = c.sleep ?? 2
+                return (
+                  <div key={c.weekKey} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 0',
+                    borderBottom: i < sorted.length - 1 ? '1px solid var(--sa-rule)' : 'none',
+                  }}>
+                    <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)', width: 52, flexShrink: 0 }}>
+                      {dateStr}
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, height: 3, background: 'var(--sa-bg-2)', borderRadius: 100, overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', width: '100%',
+                          background: 'var(--sa-accent)', borderRadius: 100,
+                          transform: `scaleX(${sleepVal / 4})`,
+                          transformOrigin: 'left',
+                          transition: 'transform 0.9s var(--sa-settle)',
+                        }} />
+                      </div>
+                      <span className="sa-label" style={{ fontSize: 8, color: 'var(--sa-ink-3)', width: 44, flexShrink: 0 }}>
+                        {sleepLabels[sleepVal].toUpperCase()}
+                      </span>
+                    </div>
+                    {c.arrived && (
+                      <span style={{
+                        fontSize: 8, fontFamily: 'var(--sa-mono-font, monospace)', letterSpacing: '0.05em',
+                        color: arrivedColor[c.arrived] || 'var(--sa-ink-3)',
+                        width: 46, textAlign: 'right', flexShrink: 0,
+                      }}>
+                        {c.arrived.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* Six-week dot grid */}
         <div className="sa-enter" style={{ marginBottom: 36, animationDelay: '0.15s' }}>
@@ -242,7 +293,7 @@ export default function LogScreen({ state }) {
                       </div>
 
                       {/* Actions */}
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                         <button onClick={() => saveEdit(e.id)} style={{
                           flex: 1, padding: '10px 0', borderRadius: 100,
                           background: 'var(--sa-accent)', border: 'none',
@@ -262,6 +313,24 @@ export default function LogScreen({ state }) {
                           {deleteConfirm === e.id ? 'Confirm delete' : 'Delete'}
                         </button>
                       </div>
+                      {e.groups?.length > 0 && (
+                        <button onClick={() => beginWorkout({
+                          groups:  e.groups,
+                          mode:    e.mode || 'def',
+                          slotIdx: e.slotIdx ?? 3,
+                          minutes: e.duration ?? 60,
+                          effort:  'medium',
+                          label:   e.label || e.groups.map(capitalize).join(' & '),
+                        })} style={{
+                          width: '100%', padding: '10px 0', borderRadius: 100,
+                          background: 'transparent',
+                          border: '1px solid var(--sa-rule-hi)',
+                          fontFamily: 'Newsreader, serif', fontStyle: 'italic',
+                          fontSize: 13, color: 'var(--sa-ink-2)', cursor: 'pointer',
+                        }}>
+                          Repeat this session
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

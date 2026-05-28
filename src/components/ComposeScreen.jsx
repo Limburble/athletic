@@ -1,6 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { SaIcon, SaModeTag, SaFloatingDock } from './SanctuaryAtoms'
 import { DEF_POOL, STR_POOL, SLOTS } from '../data/exercises'
+
+const INFO_VARIANTS = {
+  initial: { opacity: 0, y: -6, scale: 0.98 },
+  animate: { opacity: 1, y: 0,  scale: 1,   transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+  exit:    { opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.16, ease: [0.16, 1, 0.3, 1] } },
+}
 
 function SaPhase({ n, label, subtitle, children, delay = 0 }) {
   return (
@@ -18,22 +25,53 @@ function SaPhase({ n, label, subtitle, children, delay = 0 }) {
   )
 }
 
-function SaItineraryRow({ title, meta, sub }) {
+function SaItineraryRow({ title, meta, sub, info }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '12px 0',
-      borderBottom: '1px solid var(--sa-rule)',
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 16, color: 'var(--sa-ink-1)', marginBottom: sub ? 3 : 0, letterSpacing: '-0.005em' }}>
-          {title}
+    <div style={{ borderBottom: '1px solid var(--sa-rule)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'Newsreader, serif', fontWeight: 400, fontSize: 16, color: 'var(--sa-ink-1)', marginBottom: sub ? 3 : 0, letterSpacing: '-0.005em' }}>
+            {title}
+          </div>
+          {sub && <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>{sub.toUpperCase()}</div>}
         </div>
-        {sub && <div className="sa-label" style={{ fontSize: 9, color: 'var(--sa-ink-3)' }}>{sub.toUpperCase()}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+          <div className="sa-mono" style={{ fontSize: 11, fontWeight: 300, color: 'var(--sa-ink-2)', letterSpacing: '0.03em' }}>
+            {meta}
+          </div>
+          {info && (
+            <button onClick={() => setOpen(o => !o)} style={{
+              width: 22, height: 22, borderRadius: 100, flexShrink: 0,
+              border: `1px solid ${open ? 'var(--sa-accent)' : 'var(--sa-rule-hi)'}`,
+              background: open ? 'var(--sa-accent)' : 'transparent',
+              color: open ? '#14110e' : 'var(--sa-ink-3)',
+              fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1, padding: 0,
+            }}>i</button>
+          )}
+        </div>
       </div>
-      <div className="sa-mono" style={{ fontSize: 11, fontWeight: 300, color: 'var(--sa-ink-2)', letterSpacing: '0.03em', flexShrink: 0, marginLeft: 12 }}>
-        {meta}
-      </div>
+      <AnimatePresence>
+        {open && info && (
+          <motion.div
+            key="info"
+            variants={INFO_VARIANTS}
+            initial="initial" animate="animate" exit="exit"
+            style={{ padding: '2px 0 14px', overflow: 'hidden' }}
+          >
+            <div style={{
+              fontSize: 13, color: 'var(--sa-ink-2)', lineHeight: 1.65,
+              fontFamily: 'Newsreader, serif', fontStyle: 'italic',
+              padding: '14px 16px', background: 'var(--sa-bg-2)',
+              borderRadius: 14, border: '1px solid var(--sa-rule)',
+            }}>
+              {info}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -118,7 +156,7 @@ export default function ComposeScreen({ state }) {
         {/* Phase I — Warmup */}
         <SaPhase n="I" label="Wake the body" subtitle={`${warmup.length * 3} minutes · warmup`} delay={0.15}>
           {warmup.map((w, i) => (
-            <SaItineraryRow key={i} title={w.n} meta={w.sets} />
+            <SaItineraryRow key={i} title={w.n} meta={w.sets} info={w.i} />
           ))}
         </SaPhase>
 
@@ -134,6 +172,7 @@ export default function ComposeScreen({ state }) {
                   key={ei}
                   title={ex.n}
                   meta={isStr ? ex.s.split(' (')[0] : ex.d.split(' (')[0]}
+                  info={ex.i}
                 />
               ))}
             </div>
@@ -151,6 +190,7 @@ export default function ComposeScreen({ state }) {
               title={ex.n}
               meta={isStr ? ex.s.split(' (')[0] : ex.d.split(' (')[0]}
               sub={ex.role}
+              info={ex.i}
             />
           ))}
         </SaPhase>

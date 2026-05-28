@@ -86,10 +86,10 @@ function TimeDial({ value, onChange }) {
 }
 
 export default function PathScreen({ state }) {
-  const { mode: stateMode, setTab, compile } = state
+  const { mode: stateMode, setTab, compile, pathSeedGroups } = state
 
   const [time,   setTime]   = useState(60)
-  const [groups, setGroups] = useState([])
+  const [groups, setGroups] = useState(() => pathSeedGroups || [])
   const [mod,    setMod]    = useState(stateMode || 'def')
 
   const toggle = (id) => setGroups(g => g.includes(id) ? g.filter(x => x !== id) : [...g, id])

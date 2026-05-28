@@ -153,6 +153,27 @@ export default function TonightScreen({ state }) {
           </div>
         </div>
 
+        {/* Streak at risk */}
+        {store.stats.streak > 0 && store.stats.lastVisitDaysAgo === 1 && (
+          <div className="sa-enter" style={{ padding: '20px 20px 0' }}>
+            <div style={{
+              padding: '14px 18px',
+              border: '1px solid var(--sa-accent)',
+              borderRadius: 16,
+              background: 'var(--sa-accent-aura)',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div className="sa-streak-dot" style={{ width: 6, height: 6, borderRadius: 100, background: 'var(--sa-accent)', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: 'Newsreader, serif', fontStyle: 'italic', fontSize: 15, color: 'var(--sa-accent)', marginBottom: 2 }}>
+                  {store.stats.streak}-day streak at risk
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--sa-ink-2)' }}>Step in before midnight to keep it going.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Primary suggestion card */}
         <div style={{ padding: '32px 20px 0' }}>
           <div className="sa-panel sa-enter" style={{ animationDelay: '0.1s', padding: '28px 24px 24px' }}>
@@ -229,7 +250,7 @@ export default function TonightScreen({ state }) {
           ))}
 
           {/* Start from scratch */}
-          <div className="sa-tap" onClick={goPath} style={{
+          <div className="sa-tap" onClick={() => goPath(primary.groups)} style={{
             display: 'flex', alignItems: 'center',
             padding: '18px 4px',
             gap: 16,
