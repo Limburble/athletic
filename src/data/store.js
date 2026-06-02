@@ -13,6 +13,9 @@ export const DEFAULT_PROFILE = {
   heightIn:  10,
   onboarded: false,
   banned:    [],
+  gymOpen:   '05:30',
+  gymClose:  '22:00',
+  gymDays:   [1, 2, 3, 4, 5, 6, 0],
 }
 
 const DEFAULT_PREFS = {
@@ -84,6 +87,15 @@ function commonMood(sessions) {
 
 // ── Storage I/O ───────────────────────────────────────────────────────────────
 
+function isGymOpen({ gymOpen, gymClose, gymDays }) {
+  const now = new Date()
+  if (!gymDays.includes(now.getDay())) return false
+  const [oh, om] = gymOpen.split(':').map(Number)
+  const [ch, cm] = gymClose.split(':').map(Number)
+  const mins = now.getHours() * 60 + now.getMinutes()
+  return mins >= oh * 60 + om && mins < ch * 60 + cm
+}
+
 function loadRaw() {
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -111,6 +123,7 @@ function buildStore(raw) {
     recentVisits:     recent.length,
     recentHours:      +(recent.reduce((s, e) => s + (e.duration || 0), 0) / 60).toFixed(1),
     recentAvgMood:    commonMood(recent),
+    gymIsOpen:        isGymOpen(profile),
   }
 
   const thisWeekCheckin = checkins.find(c => c.weekKey === isoWeekKey()) || null

@@ -2,6 +2,14 @@ import React, { useState } from 'react'
 import { SaIcon, SaStat, SaSwitch, SaFloatingDock } from './SanctuaryAtoms'
 import { dayKey, weekMonday } from '../data/store'
 
+function fmt12(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  const ampm = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
 const SLOT_VALUES = [15, 30, 45, 60, 75, 90, 105, 120]
 
 export default function CoolScreen({ state }) {
@@ -29,6 +37,7 @@ export default function CoolScreen({ state }) {
       workout={workout}
       sessionStart={sessionStart}
       completedSets={completedSets}
+      store={store}
     />
   )
   return <CoolClose onDone={handleClose} sessions={store.sessions} />
@@ -108,7 +117,7 @@ function CoolArrive({ onNext }) {
 }
 
 // ── Reflect ──────────────────────────────────────────────────────────────────
-function CoolReflect({ onNext, mode, slotIdx, workout, sessionStart, completedSets }) {
+function CoolReflect({ onNext, mode, slotIdx, workout, sessionStart, completedSets, store }) {
   const [hydrated, setHydrated] = useState(false)
   const isStr = mode === 'str'
 
@@ -186,18 +195,41 @@ function CoolReflect({ onNext, mode, slotIdx, workout, sessionStart, completedSe
           )}
         </div>
 
-        {/* Sauna */}
-        <div className="sa-panel sa-enter" style={{ padding: '20px 22px', marginBottom: 14, background: 'linear-gradient(180deg, var(--sa-str-aura), var(--sa-bg-elev))', animationDelay: '0.15s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 100, background: 'var(--sa-str-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SaIcon name="sun" size={20} color="var(--sa-str)" />
+        {/* Gym hours tile */}
+        {(() => {
+          const gymIsOpen = store?.stats?.gymIsOpen
+          const gymName   = store?.profile?.gym || 'Your gym'
+          const gymOpen   = store?.profile?.gymOpen  || '05:30'
+          const gymClose  = store?.profile?.gymClose || '22:00'
+          return (
+            <div className="sa-panel sa-enter" style={{
+              padding: '20px 22px', marginBottom: 14, animationDelay: '0.15s',
+              background: gymIsOpen
+                ? 'linear-gradient(180deg, var(--sa-str-aura), var(--sa-bg-elev))'
+                : 'var(--sa-bg-elev)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 100,
+                  background: gymIsOpen ? 'var(--sa-str-glow)' : 'var(--sa-bg-2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <SaIcon name="sun" size={20} color={gymIsOpen ? 'var(--sa-str)' : 'var(--sa-ink-3)'} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Newsreader, serif', fontStyle: 'italic', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 4 }}>
+                    {gymIsOpen ? `${gymName} is still open.` : 'Rest and recover.'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--sa-ink-2)', lineHeight: 1.5 }}>
+                    {gymIsOpen
+                      ? `Closes at ${fmt12(gymClose)}. 15 minutes in the sauna is plenty.`
+                      : `${gymName} reopens at ${fmt12(gymOpen)}.`}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Newsreader, serif', fontStyle: 'italic', fontWeight: 400, fontSize: 17, color: 'var(--sa-ink-1)', marginBottom: 4 }}>The sauna is open.</div>
-              <div style={{ fontSize: 12, color: 'var(--sa-ink-2)', lineHeight: 1.5 }}>Until 10pm. 15 minutes is plenty.</div>
-            </div>
-          </div>
-        </div>
+          )
+        })()}
       </div>
 
       <SaFloatingDock>

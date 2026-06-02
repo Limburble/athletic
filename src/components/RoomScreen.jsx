@@ -70,6 +70,9 @@ export default function RoomScreen({ state }) {
   const [boundariesOpen, setBoundariesOpen] = useState(false)
   const [importMsg, setImportMsg] = useState(null)
   const fileRef = useRef()
+  const [gymOpen,  setGymOpenState]  = useState(profile.gymOpen  || '05:30')
+  const [gymClose, setGymCloseState] = useState(profile.gymClose || '22:00')
+  const [gymDays,  setGymDaysState]  = useState(profile.gymDays  || [1,2,3,4,5,6,0])
 
   const banned = profile.banned || []
 
@@ -239,6 +242,60 @@ export default function RoomScreen({ state }) {
             last
             onClick={() => setBoundariesOpen(true)}
           />
+        </RoomSection>
+
+        {/* Gym hours */}
+        <RoomSection title="Your gym" delay={0.28}>
+          {/* Time pickers */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--sa-rule)', display: 'flex', gap: 12 }}>
+            {[
+              { label: 'OPENS', val: gymOpen, set: (v) => { setGymOpenState(v); store.updateProfile({ gymOpen: v }) } },
+              { label: 'CLOSES', val: gymClose, set: (v) => { setGymCloseState(v); store.updateProfile({ gymClose: v }) } },
+            ].map(f => (
+              <div key={f.label} style={{ flex: 1 }}>
+                <div className="sa-label" style={{ fontSize: 9, marginBottom: 6 }}>{f.label}</div>
+                <input
+                  type="time"
+                  value={f.val}
+                  onChange={e => f.set(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    background: 'var(--sa-bg-2)', border: '1px solid var(--sa-rule-hi)',
+                    borderRadius: 12, fontFamily: 'Geist, monospace',
+                    fontSize: 15, color: 'var(--sa-ink-1)', outline: 'none',
+                    colorScheme: 'dark',
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          {/* Day toggles */}
+          <div style={{ padding: '14px 20px' }}>
+            <div className="sa-label" style={{ fontSize: 9, marginBottom: 8 }}>OPEN DAYS</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[['M',1],['T',2],['W',3],['T',4],['F',5],['S',6],['S',0]].map(([lbl, d]) => {
+                const on = gymDays.includes(d)
+                return (
+                  <span key={d + lbl} className="sa-tap" onClick={() => {
+                    const next = on ? gymDays.filter(x => x !== d) : [...gymDays, d]
+                    setGymDaysState(next)
+                    store.updateProfile({ gymDays: next })
+                  }} style={{
+                    flex: 1, height: 34, borderRadius: 8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontFamily: 'Geist, monospace',
+                    background: on ? 'var(--sa-accent)' : 'var(--sa-bg-2)',
+                    color: on ? '#14110e' : 'var(--sa-ink-3)',
+                    border: `1px solid ${on ? 'var(--sa-accent)' : 'var(--sa-rule)'}`,
+                    transition: 'all 0.3s var(--sa-settle)',
+                    userSelect: 'none',
+                  }}>
+                    {lbl}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         </RoomSection>
 
         {/* Data backup */}

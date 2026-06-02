@@ -33,12 +33,12 @@ export function useAppState() {
     setGroups(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  function compile({ groups: g, mode: m, slotIdx: s } = {}) {
+  function compile({ groups: g, mode: m, slotIdx: s, useHome: uh } = {}) {
     const useGroups  = g ?? groups
     const useMode    = m ?? mode
     const useSlotIdx = s ?? slotIdx
     const banned     = store.profile.banned || []
-    const result = buildRoutine(useGroups, useMode, useSlotIdx, absRotation.current, banned)
+    const result = buildRoutine(useGroups, useMode, useSlotIdx, absRotation.current, banned, uh ?? false)
     absRotation.current = (absRotation.current + 1) % 5
     setWorkout(result)
     if (g !== undefined) setGroups(g)

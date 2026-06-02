@@ -175,7 +175,7 @@ git push origin main
 
 ---
 
-### 🔜 Next: Gym hours + home/gym state
+### ✅ Done: Gym hours + home/gym state
 
 Allow the user to set custom gym open/close times. When the gym is closed the app switches to a **home mode** — bodyweight/no-equipment workouts only — and returns to the normal gym state when it reopens. A live open/closed indicator on TonightScreen replaces the current "sauna is still open" copy.
 
@@ -277,14 +277,17 @@ Save on blur/change via `store.updateProfile({ gymOpen, gymClose, gymDays })`.
 
 ---
 
-#### Suggested implementation order
+#### What was built
 
-1. `store.js` — add fields + `isGymOpen` helper + `gymIsOpen` in derived stats
-2. `exercises.js` — add `HOME_POOL` + exercise entries + `EX_MUSCLES` for new keys
-3. `buildRoutine` — accept + use `useHome` flag
-4. `TonightScreen` — swap suggestions source + add open/closed chip
-5. `RoomScreen` — gym hours section
-6. Test: set close time to now → confirm home pool loads → advance time → confirm gym pool returns
+**`src/data/store.js`** — `DEFAULT_PROFILE` gets `gymOpen: '05:30'`, `gymClose: '22:00'`, `gymDays: [1,2,3,4,5,6,0]`. `isGymOpen()` helper checks current time + day. `stats.gymIsOpen` derived bool recomputed every render.
+
+**`src/data/exercises.js`** — 10 new bodyweight EX entries (pushUp, widePushUp, dipsChair, invRow, superhero, squat, lunge, wallSit, pikePushUp, mountainClimber). `HOME_POOL` keyed by muscle group mirrors DEF/STR format. `buildRoutine` accepts `useHome = false` — picks from `HOME_POOL` for both def and str entries when true.
+
+**`src/hooks/useAppState.js`** — `compile()` accepts `useHome` from config and passes it to `buildRoutine`.
+
+**`src/components/TonightScreen.jsx`** — gym status chip (glowing green dot when open, dim when closed) below top bar. `buildSuggestions` reads `stats.gymIsOpen` and adds `useHome: !gymIsOpen` to all three suggestion configs. Labels shift to "home reset" / "home strength" when closed. Suggestion body text updates accordingly.
+
+**`src/components/RoomScreen.jsx`** — "Your gym" `RoomSection` with OPENS/CLOSES `<input type="time">` pickers + 7 day-of-week pill toggles (M T W T F S S). Each change fires `store.updateProfile()` immediately on change.
 
 ---
 

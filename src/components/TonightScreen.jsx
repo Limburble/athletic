@@ -15,6 +15,14 @@ const ACHE_AVOIDS = {
 
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
+function fmt12(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  const ampm = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
 function sessionGroupCounts(sessions, n = 8) {
   const counts = {}
   ALL_GROUPS.forEach(g => { counts[g] = 0 })
@@ -26,6 +34,7 @@ function sessionGroupCounts(sessions, n = 8) {
 
 function buildSuggestions(store) {
   const { sessions, prefs, stats, thisWeekCheckin } = store
+  const gymIsOpen = stats.gymIsOpen
   const prefMode = prefs.mode
   const counts   = sessionGroupCounts(sessions)
 
@@ -57,15 +66,18 @@ function buildSuggestions(store) {
     slotIdx: primarySlot,
     minutes: primaryMin,
     effort:  primaryEffort,
+    useHome: !gymIsOpen,
     label:   primaryGroups.map(cap).join(' & '),
     body: tired
       ? 'Taking it easier tonight — your check-in asked for it.'
-      : avoid.size > 0
-        ? `Skipping ${[...avoid].join(' & ')} based on your check-in. `
-          + 'These groups need the most attention.'
-        : sessions.length === 0
-          ? 'The classic foundations. A solid start.'
-          : 'Least-trained groups from your recent history.',
+      : !gymIsOpen
+        ? 'Gym is closed. Bodyweight session, no equipment needed.'
+        : avoid.size > 0
+          ? `Skipping ${[...avoid].join(' & ')} based on your check-in. `
+            + 'These groups need the most attention.'
+          : sessions.length === 0
+            ? 'The classic foundations. A solid start.'
+            : 'Least-trained groups from your recent history.',
   }
 
   // ── Short Reset ───────────────────────────────────────────────────────────
@@ -79,7 +91,8 @@ function buildSuggestions(store) {
     slotIdx: resetSlot,
     minutes: SLOTS[resetSlot]?.v ?? 30,
     effort:  'low',
-    label:   cap(resetGroup) + ', quick session',
+    useHome: !gymIsOpen,
+    label:   cap(resetGroup) + (gymIsOpen ? ', quick session' : ', home reset'),
     body:    'One group. Light work. In and out.',
   }
 
@@ -98,8 +111,9 @@ function buildSuggestions(store) {
     slotIdx: strSlot,
     minutes: SLOTS[strSlot]?.v ?? 75,
     effort:  'heavy',
-    label:   strGroups.map(cap).join(' & ') + ', strength',
-    body:    'Compound movement. Full strength focus.',
+    useHome: !gymIsOpen,
+    label:   strGroups.map(cap).join(' & ') + (gymIsOpen ? ', strength' : ', home strength'),
+    body:    gymIsOpen ? 'Compound movement. Full strength focus.' : 'Bodyweight strength. No equipment.',
   }
 
   return { primary, shortReset, strengthEvening }
@@ -107,6 +121,7 @@ function buildSuggestions(store) {
 
 export default function TonightScreen({ state }) {
   const { mode, setTab, store, goPath, beginWorkout } = state
+  const gymIsOpen = store.stats.gymIsOpen
 
   const now  = new Date()
   const hour = now.getHours()
@@ -139,6 +154,34 @@ export default function TonightScreen({ state }) {
       <SaTopBar mode={mode} onMenu={() => setTab('room')} />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 88 }}>
+
+        {/* Gym hours tile */}
+        <div style={{ padding: '16px 20px 0' }} className="sa-enter">
+          <div className="sa-tap" onClick={() => setTab('room')} style={{
+            padding: '13px 18px',
+            background: 'var(--sa-bg-elev)',
+            border: '1px solid var(--sa-rule)',
+            borderRadius: 16,
+            display: 'flex', alignItems: 'center', gap: 14,
+          }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+              background: gymIsOpen ? 'var(--sa-def)' : 'var(--sa-ink-4)',
+              boxShadow: gymIsOpen ? '0 0 10px var(--sa-def-glow)' : 'none',
+              transition: 'all 0.4s var(--sa-settle)',
+            }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'Newsreader, serif', fontSize: 14, color: 'var(--sa-ink-1)', marginBottom: 2 }}>
+                {gymIsOpen ? `${store.profile.gym} is open` : `${store.profile.gym} is closed`}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--sa-ink-3)', fontFamily: 'var(--sa-mono-font, monospace)' }}>
+                {fmt12(store.profile.gymOpen)} – {fmt12(store.profile.gymClose)}
+                {!gymIsOpen && ' · home session'}
+              </div>
+            </div>
+            <SaIcon name="chevR" size={13} color="var(--sa-ink-4)" />
+          </div>
+        </div>
 
         {/* Greeting */}
         <div style={{ padding: '40px 28px 0' }} className="sa-enter">

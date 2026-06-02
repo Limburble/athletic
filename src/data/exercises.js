@@ -61,6 +61,17 @@ export const EX = {
   plank:            { n:'Plank (Active Tension)', d:'3 × 40–60 sec (15s)', s:'3 × 60 sec (15s)', i:'Active tension — squeeze glutes, abs, and quads simultaneously. Elbows under shoulders. Do not just survive it. Reset with intent each set.' },
   sidePlank:        { n:'Side Plank',             d:'3 × 30–40 sec ea (15s)', s:'3 × 45 sec ea (15s)', i:'Hip stacked, elbow under shoulder. Drive hip up — do not let it sag. Squeeze the working side oblique deliberately each second.' },
   plankShoulderTap: { n:'Plank Shoulder Taps',    d:'3 × 20 taps ea (15s)', s:'3 × 25 taps ea (15s)', i:'High plank, feet hip-width. Tap opposite shoulder while hips stay square. Core fights the rotation on every tap. Slow and controlled.' },
+  // Bodyweight / home pool exercises
+  pushUp:          { n:'Push-Up',           d:'3 × 12–15 (60s)', s:'3 × max (75s)',   i:'Hands shoulder-width, fingers forward. Rigid line from heel to crown. Lower until chest nearly touches floor. Press through heels of palms. Stop just short of lockout. Control every inch of the descent.' },
+  widePushUp:      { n:'Wide Push-Up',      d:'3 × 10–12 (60s)', s:'3 × max (75s)',   i:'Hands 1.5× shoulder-width, fingers angled 30° out. Wider grip shifts emphasis to outer chest and anterior delt. Same rigid plank — do not let hips sag or rise.' },
+  dipsChair:       { n:'Chair Dip',         d:'3 × 10–12 (60s)', s:'4 × 8–10 (75s)', i:'Hands on chair edge, fingers forward. Hips off the seat, feet flat on floor. Lower until elbows reach 90° — not beyond. Press up through heels of palms. Keep torso upright to bias triceps.' },
+  invRow:          { n:'Inverted Row',      d:'3 × 10–12 (75s)', s:'4 × 8 (90s)',     i:'Use a sturdy table edge or low bar. Overhand grip, body in a rigid plank — heels on floor. Pull chest to bar, elbows back and close. 1-second squeeze. 3-second descent. Elevate feet to increase difficulty.' },
+  superhero:       { n:'Superman Hold',     d:'3 × 12 (45s)',    s:'3 × 15 (45s)',    i:'Face down, arms extended overhead. Simultaneously raise chest, arms, and legs off the floor. Hold 2 seconds at peak contraction. Targets erector spinae and posterior chain — no equipment needed.' },
+  squat:           { n:'Bodyweight Squat',  d:'3 × 20 (60s)',    s:'3 × 25 (60s)',    i:'Feet shoulder-width, toes angled 15–30° out. Sit back and down — weight through heels and mid-foot. Break parallel if mobility allows. Drive knees out over toes. Pause 1 second at bottom. Rise through heels.' },
+  lunge:           { n:'Forward Lunge',     d:'3 × 12ea (60s)',  s:'3 × 15ea (60s)',  i:'Step forward into a long stance. Lower back knee toward floor without touching. Front shin stays vertical — knee stays over mid-foot. Drive back through front heel to stand. Alternate legs or complete one side at a time.' },
+  wallSit:         { n:'Wall Sit',          d:'3 × 45s (45s)',   s:'3 × 60s (45s)',   i:'Back flat against the wall. Lower until thighs are parallel to the floor. Knees at 90°, directly over ankles. Arms crossed or flat on thighs. Isometric quad burn — do not bounce or rest between holds.' },
+  pikePushUp:      { n:'Pike Push-Up',      d:'3 × 10–12 (60s)', s:'3 × max (75s)',  i:'Downward-dog position — hips high, body forms an inverted V. Lower head toward floor between hands. Press back up. Targets anterior delt and upper pec. The steeper the angle, the more shoulder emphasis.' },
+  mountainClimber: { n:'Mountain Climber',  d:'3 × 20 (45s)',    s:'3 × 25 (45s)',    i:'High plank, wrists under shoulders. Drive one knee toward chest, switch. Hips level — do not pike or sag. For strength work, use a controlled 2-second pace per rep rather than sprint tempo.' },
 }
 
 export const DEF_POOL = {
@@ -79,6 +90,15 @@ export const STR_POOL = {
   biceps:    [['barbellCurl','5','5–6','2 min'],['preacherCurl','4','6–8','90s'],['inclineCurl','3','8','90s'],['hammerCurl','4','6–8','90s'],['spiderCurl','3','8','90s'],['cableCurl','3','10','75s'],['concentrationCurl','3','10','75s'],['machineCurl','3','10','75s'],['reverseCurl','3','10','75s']],
   triceps:   [['closeGripSmith','5','4–6','3 min'],['skullCrusher','5','4–6','2.5 min'],['dipsTri','4','5–6','2 min'],['ohTricep','3','8–10','90s'],['cableOHTricep','3','8–10','90s'],['barPushdown','3','8–10','90s'],['triPushdown','3','10','75s'],['singleArmPushdown','3','10','75s'],['diamondPushup','3','max','90s']],
   legs:      [['smithSquat','5','4–6','3 min'],['legPress','4','5–6','2 min'],['legCurl','4','6–8','2 min'],['legExt','3','10','90s'],['hipAbduct','3','12','60s'],['hipAdduct','3','12','60s'],['calfRaise','5','15','60s']],
+}
+
+export const HOME_POOL = {
+  chest:     [['pushUp','3','12–15','60s'],['widePushUp','3','10–12','60s'],['diamondPushup','3','max','60s'],['dipsChair','3','10–12','60s']],
+  back:      [['invRow','3','10–12','75s'],['superhero','3','12','45s']],
+  legs:      [['squat','3','20','60s'],['lunge','3','12ea','60s'],['wallSit','3','45s','45s'],['calfRaise','4','20','30s']],
+  shoulders: [['pikePushUp','3','10–12','60s'],['mountainClimber','3','20','45s'],['dbLateral','3','15–20','45s']],
+  biceps:    [['invRow','3','10–12','75s'],['hammerCurl','3','12','60s']],
+  triceps:   [['diamondPushup','3','max','60s'],['dipsChair','3','12–15','60s']],
 }
 
 export const DEF_EX_COUNT = [1,2,3,4,5,6,7,8,9,10]
@@ -137,7 +157,7 @@ export const HIIT_EXERCISES = [
   {id:'thruster',           n:'Dumbbell Thrusters',  work:35, rest:25, i:'Dumbbells at shoulders. Squat to parallel, drive up and press overhead in one movement.'},
 ]
 
-export function buildRoutine(groups, mode, slotIdx, absRotation = 0, banned = []) {
+export function buildRoutine(groups, mode, slotIdx, absRotation = 0, banned = [], useHome = false) {
   const t = SLOTS[slotIdx].v
   const isStr = mode === 'str'
   const totalEx = (isStr ? STR_EX_COUNT : DEF_EX_COUNT)[slotIdx]
@@ -152,8 +172,8 @@ export function buildRoutine(groups, mode, slotIdx, absRotation = 0, banned = []
 
   const main = []
   groups.forEach((g, gi) => {
-    const defPool = DEF_POOL[g] || []
-    const strPool = STR_POOL[g] || []
+    const defPool = useHome ? (HOME_POOL[g] || []) : (DEF_POOL[g] || [])
+    const strPool = useHome ? (HOME_POOL[g] || []) : (STR_POOL[g] || [])
     const target = basePerGroup + (gi < remainder ? 1 : 0)
     let added = 0
     for (let i = 0; i < defPool.length && added < target; i++) {

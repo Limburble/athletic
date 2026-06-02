@@ -34,7 +34,8 @@ function parseReps(spec) {
 }
 
 export default function DeepScreen({ state }) {
-  const { mode, workout, goCool, setTab, groups } = state
+  const { mode, workout, goCool, setTab, groups, store } = state
+  const prefs = store?.prefs || {}
   const isStr         = mode === 'str'
   const isSingleGroup = (groups || []).length <= 1
   const restFactor    = isSingleGroup ? 0.7 : 1.0
@@ -66,6 +67,30 @@ export default function DeepScreen({ state }) {
   const [showInfo,    setShowInfo]    = useState(false)
   const [popAnim,     setPopAnim]     = useState(false)
 
+  // Screen wake lock — hold screen on while DeepScreen is mounted
+  const wakeLock = useRef(null)
+  useEffect(() => {
+    if (!prefs.keepOn || !('wakeLock' in navigator)) return
+    const acquire = async () => {
+      try { wakeLock.current = await navigator.wakeLock.request('screen') } catch {}
+    }
+    acquire()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') acquire()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      wakeLock.current?.release()
+      wakeLock.current = null
+    }
+  }, [])
+
+  function haptic(pattern) {
+    if (!prefs.haptics || !navigator.vibrate) return
+    navigator.vibrate(pattern)
+  }
+
   // Rest countdown
   useEffect(() => {
     const id = setInterval(() => {
@@ -75,6 +100,7 @@ export default function DeepScreen({ state }) {
       if (s.timeLeft <= 0) {
         advanceAfterRest()
       } else {
+        if (s.timeLeft === 3) haptic([30])
         tick()
       }
     }, 1000)
@@ -82,6 +108,7 @@ export default function DeepScreen({ state }) {
   }, [exerciseData])
 
   function advanceAfterRest() {
+    haptic([40, 80, 40])
     const s  = t.current
     const ex = exerciseData[s.exIdx]
     if (!ex) { s.phase = 'done'; s.running = false; tick(); return }
@@ -107,6 +134,7 @@ export default function DeepScreen({ state }) {
     const ex = exerciseData[s.exIdx]
     if (!ex || s.phase !== 'work') return
 
+    haptic([50])
     s.completed[ex.key] = (s.completed[ex.key] || 0) + 1
     setPopAnim(true)
     setTimeout(() => setPopAnim(false), 420)
@@ -175,6 +203,7 @@ export default function DeepScreen({ state }) {
   }
 
   function handleDone() {
+    haptic([80, 80, 80, 80, 120])
     const completedSets = exerciseData.map(ex => ({
       key:       ex.key,
       name:      ex.name,
